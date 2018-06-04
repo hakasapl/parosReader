@@ -133,10 +133,21 @@ def main():
     print("\nChecking for usbserial ports...\n")
 
     usbPortList = []
-    portList = serial.tools.list_ports.comports()
-    for element in portList:
-        if "usbserial" in element.device:
-            usbPortList.append(element.device)
+    # For Raspberry PI
+    if sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        portList = glob.glob('/dev/tty[A-Za-z]*')
+        for port in portList:
+            if "USB" in port:
+                usbPortList.append(port)
+    # For OSX
+    elif sys.platform.startswith('darwin'):
+        portList = serial.tools.list_ports.comports()
+        for element in portList:
+            if "usbserial" in element.device:
+                usbPortList.append(element.device)
+    else:
+        raise EnvironmentError('Unsupported platform')
     
     #
     # print list of usbserial ports, quit if none
