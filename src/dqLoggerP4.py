@@ -8,7 +8,7 @@
 #   Westy based on code by D.L. Pepyne
 #   Copyright 2018 __University of Massachusetts__. All rights reserved.
 #
-#   Revision: 19 March 2018; 1 May 2018; 8 May 2018; 9 May 2018; 12 May 2018
+#   Revision: 19 March 2018; 1 May 2018; 8 May 2018; 9 May 2018; 12 May 2018; 4 June 2018
 #
 # TO DO:
 #   - DONE - close file when reaches certain size, or on date change
@@ -32,10 +32,44 @@ import time
 import serial
 import serial.tools.list_ports
 import sys
+import glob
 import os
 import argparse
 import datetime
 from datetime import datetime
+
+# 4 JUNE 2018
+# this class is supposed to be much more efficient than the pyserial readline - obtains
+# higher throughput and works better with Raspberry Pis and Arduinos - its only problem
+# is that it does not have a timeout and will hang if a barometer loses power or fails
+# - from: https://github.com/pyserial/pyserial/issues/216
+# - here we've added code to return on serial port timeout
+class ReadLine:
+    def __init__(self, s):
+        self.buf = bytearray()
+        self.s = s
+    
+    def readline(self):
+        i = self.buf.find(b"\n")
+        if i >= 0:
+            r = self.buf[:i+1]
+            self.buf = self.buf[i+1:]
+            return r
+        while True:
+            i = max(1, min(2048, self.s.in_waiting))
+            data = self.s.read(i)
+            
+            # return on read (serial port) timeout
+            if not data:
+                return data
+
+            i = data.find(b"\n")
+            if i >= 0:
+                r = self.buf + data[:i+1]
+                self.buf[0:] = data[i+1:]
+                return r
+            else:
+                self.buf.extend(data)
 
 def sendCommand(strOut, dqPort, verbosemodeFlag):
     if verbosemodeFlag:
@@ -57,12 +91,13 @@ def main():
 
     global currentUTCHour
     global logFile
-    
+#    global dqSampleRate
+
     #
     # define program defaults
     #
 
-    DEFAULT_SAMPLERATE = 10
+    DEFAULT_SAMPLERATE = 20
 
     #
     # define parser for user input arguments
@@ -179,7 +214,7 @@ def main():
         dqPort.bytesize = serial.EIGHTBITS
         dqPort.parity = serial.PARITY_NONE
         dqPort.stopbits = serial.STOPBITS_ONE
-        dqPort.timeout = 0.1
+        dqPort.timeout = 0.1  # this needs to be long enough to wake up the barometers and get config responses
         dqPort.open()
 
         modelNumberResponse = sendCommand('*0100MN', dqPort, verbosemodeFlag)
@@ -209,45 +244,79 @@ def main():
     # UN=2 - hPa
     # XM=1 - nano-resolution mode
     # MD=0
-    # TH=dqSampleRate
-    # IA=int( ceil( log2(128/dqSampleRate) + 3 ) ) - see Table 6.1
     # XN=0
+    # TH= desired sample rate
+    # IA = 2**(9-IA) = cutoff frequency - should be <= 1/2 the sample rate
+    #   i.e., IA >= int( ceil( log2(128/dqSampleRate) + 3 ) ) - see Table 6.1
+    # TS=1 absolute timestamps
+    # GE=1 GPS enabled
     #
-    # need to set time, number of digits, nano-mode, IA value, stuff like that
     # note - only write changes if they are not already set, barometer PROM can
     # only be written a finite number of times
+    #
 
     print("\nConfiguring barometer(s)...")
 
     for dqPort,dqSN in zip(dqPortList,dqSerialNumberList):
+        
         print("\n  configuring serial number: " + dqSN + "\n")
-        # get barometer firmware version
-        print("    firmware version: " + sendCommand('*0100VR', dqPort, verbosemodeFlag))
+        
+        # check barometer firmware version
+        print("    firmware version (VR = " + sendCommand('*0100VR', dqPort, verbosemodeFlag) + ")")
         time.sleep(0.1)
-        # get nano-resolution mode
+        
+        # check nano-resolution mode
         nanoresolutionMode = sendCommand('*0100XM', dqPort, verbosemodeFlag)
-        if (nanoresolutionMode == "1"):
-            print("    nano-resolution mode: " + nanoresolutionMode + " (enabled)")
-        else:
-            print("    nano-resolution mode: " + nanoresolutionMode + " (disabled)")
+#        if (nanoresolutionMode == "1"):
+        print("    nano-resolution mode flag (XM = " + nanoresolutionMode + ")")
+#        else:
+#            print("    nano-resolution mode (XM = " + nanoresolutionMode + ") (disabled)")
         time.sleep(0.1)
-        # get pressure units
-        print("    pressure units: " + sendCommand('*0100UN', dqPort, verbosemodeFlag))
+
+        # check pressure units
+        print("    pressure units (UN = " + sendCommand('*0100UN', dqPort, verbosemodeFlag) + ")")
         time.sleep(0.1)
-        # get data output mode
-        print("    data output mode: " + sendCommand('*0100MD', dqPort, verbosemodeFlag))
+
+        # check data output mode
+        print("    data output mode (MD = " + sendCommand('*0100MD', dqPort, verbosemodeFlag) + ")")
         time.sleep(0.1)
-        # get number of significant digits
-        print("    significant digits: " + sendCommand('*0100XN', dqPort, verbosemodeFlag))
+
+        # check number of significant digits
+        print("    significant digits (XN = " + sendCommand('*0100XN', dqPort, verbosemodeFlag) + ")")
         time.sleep(0.1)
-        # get the sample rate
-        print("    sample rate: " + sendCommand('*0100TH', dqPort, verbosemodeFlag))
+
+        # check P4 sample rate
+        print("    sample rate (TH = " + sendCommand('*0100TH', dqPort, verbosemodeFlag) + ")")
         time.sleep(0.1)
-        # get anti-alias filter cutoff value
-        print("    anti-alias filter cutoff value: " + sendCommand('*0100IA', dqPort, verbosemodeFlag))
+
+        # check anti-alias filter setting
+        IA = int( sendCommand('*0100IA', dqPort, verbosemodeFlag) )
+        print("    anti-alias filter setting (IA = " + str(IA) + ") (" + str(2**(9-IA)) + " Hz cutoff)")
         time.sleep(0.1)
-        # get current date and time
-        print("    current date and time: " + sendCommand('*0100GR', dqPort, verbosemodeFlag))
+
+        # check absolute timestamps and GPS enabled flags
+        print("    timestamps flag (TS = " + sendCommand('*0100TS', dqPort, verbosemodeFlag) + ")")
+        print("    GPS interface flag (GE = " + sendCommand('*0100GE', dqPort, verbosemodeFlag) + ")")
+        time.sleep(0.1)
+
+        # check timestamp format
+        print("    timestamp format (TJ = " + sendCommand('*0100TJ', dqPort, verbosemodeFlag) + ")")
+        time.sleep(0.1)
+
+        # check the date/time format
+        print("    date and time (GR = " + sendCommand('*0100GR', dqPort, verbosemodeFlag) + ")")
+
+
+
+        # 4 JUNE 2018
+        # here we set the sample rate to the commanded barometer sample rate - this is so filenames
+        # contain the proper sample rate - we also use the sample rate to set the serial port
+        # timeout to deal with barometer failure/power loss
+        dummy = sendCommand('*0100TH', dqPort, verbosemodeFlag)
+        dqSampleRate = int(dummy[:dummy.find(",")])
+        dqPort.timeout = 1/dqSampleRate
+        print("    sample rate = " + str(dqSampleRate) + ", sample period = " + str(dqPort.timeout))
+
 
 
 
@@ -279,6 +348,25 @@ def main():
                     print(strIn)
                 break
 
+
+
+    # 4 JUNE 2018
+    #
+    # define a readline object for each barometer found - we will use the readline
+    # object's readline method to read the serial ports instead of using the
+    # pyserial readline method - it's supposed to be more efficient than the
+    # pyserial readline method
+    #
+
+    dqDeviceList = []
+    for dqPort in dqPortList:
+        dqDevice = ReadLine(dqPort)
+        dqDeviceList.append(dqDevice)
+        
+#    print(dqDeviceList)
+
+
+
     #
     # sample until user quits, e.g., via cntl-C
     #
@@ -309,23 +397,42 @@ def main():
                     logFile = open(logFilePath,'w+')
                     print("  opening log file: " + logFilePath)
                         
-            # read and log the data from each serial port
-            for dqPort, dqSN in zip(dqPortList,dqSerialNumberList):
-                data = []
-                while True:
-                    binIn = dqPort.readline()
-                    if not binIn:
-                        print(dqSN + ", NO DATA\n")
-                        # assume power loss, and try to restart continuous sampling
-                        sendCommand('*0100P4', dqPort, verbosemodeFlag)
-                        break
-                    strIn = binIn.decode()
-                    if testmodeFlag:
-                         print(dqSN + ", " + strIn)
-                    else:
-                         logFile.write(dqSN + ", " + strIn[7:-2] + "\n")
-                    #print(dqSN + ", " + strIn)
-                    break
+#            # read and log the data from each serial port - this one uses the
+#            # pyserial readline method
+#            for dqPort, dqSN in zip(dqPortList,dqSerialNumberList):
+##                data = []
+##                while True:
+#                    binIn = dqPort.readline()
+#                    if not binIn:
+#                        print(dqSN + ", NO DATA\n")
+#                        # assume power loss, and try to restart continuous sampling
+#                        sendCommand('*0100P4', dqPort, verbosemodeFlag)
+#                        continue
+##                        break
+#                    strIn = binIn.decode()
+#                    if testmodeFlag:
+#                         print(dqSN + ", " + strIn)
+#                    else:
+#                         logFile.write(dqSN + ", " + strIn[7:-2] + "\n")
+#                    #print(dqSN + ", " + strIn)
+##                    break
+
+            # 4 JUNE 2018
+            # read and log the data from each serial port - this one uses the supposedly
+            # more efficient ReadLine object readline method
+            for dqPort, dqSN, dqDevice in zip(dqPortList, dqSerialNumberList, dqDeviceList):
+                binIn = dqDevice.readline()
+                if not binIn:
+                    print(dqSN + ", NO DATA\n")
+                    # assume power loss, and try to restart continuous sampling
+                    sendCommand('*0100P4', dqPort, verbosemodeFlag)
+                    continue
+                strIn = binIn.decode()
+                if testmodeFlag:
+                    print(dqSN + ", " + strIn)
+                else:
+                    logFile.write(dqSN + ", " + strIn[7:-2] + "\n")
+
 
     except (KeyboardInterrupt, SystemExit):
 
@@ -352,3 +459,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
