@@ -5,7 +5,7 @@
 #
 #   usage: ./dqLoggerP4.py [-h] [-t] [-v] [-s SAMPLERATE] [-r LOGROOTDIR]
 #
-#   Westy based on code by D.L. Pepyne
+#   D.L. Pepyne and Westy
 #   Copyright 2018 __University of Massachusetts__. All rights reserved.
 #
 #   Revision: 19 March 2018; 1 May 2018; 8 May 2018; 9 May 2018; 12 May 2018; 4 June 2018
@@ -398,26 +398,6 @@ def main():
                     logFile = open(logFilePath,'w+')
                     print("  opening log file: " + logFilePath)
                         
-#            # read and log the data from each serial port - this one uses the
-#            # pyserial readline method
-#            for dqPort, dqSN in zip(dqPortList,dqSerialNumberList):
-##                data = []
-##                while True:
-#                    binIn = dqPort.readline()
-#                    if not binIn:
-#                        print(dqSN + ", NO DATA\n")
-#                        # assume power loss, and try to restart continuous sampling
-#                        sendCommand('*0100P4', dqPort, verbosemodeFlag)
-#                        continue
-##                        break
-#                    strIn = binIn.decode()
-#                    if testmodeFlag:
-#                         print(dqSN + ", " + strIn)
-#                    else:
-#                         logFile.write(dqSN + ", " + strIn[7:-2] + "\n")
-#                    #print(dqSN + ", " + strIn)
-##                    break
-
             # 4 JUNE 2018
             # read and log the data from each serial port - this one uses the supposedly
             # more efficient ReadLine object readline method
