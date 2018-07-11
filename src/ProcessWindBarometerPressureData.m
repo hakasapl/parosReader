@@ -6,7 +6,8 @@
 %   Copyright 2018 __University of Massachusetts__.
 %   All rights reserved.
 %
-%   Revision: 26 June 2018; 27 June 2018
+%   Revision: 26 June 2018; 27 June 2018; 29 June 2018; 9 July 2018;
+%             10 July 2018
 %
 %% =======================================================================
 
@@ -18,7 +19,15 @@ clc
 % define the program parameters
 %
 
-blockSizeInSec = 300;
+blockSizeInSec = 120;
+
+welchB = 600;  % Welch block size in samples
+welchO = 100;  % Welch overlap in samples
+
+% blockSizeInSec = 30;
+% 
+% welchB = 200;  % Welch block size in samples
+% welchO = 50;   % Welch overlap in samples
 
 %% =======================================================================
 % load the barometer data into working memory
@@ -102,7 +111,7 @@ end
 
 figure
 
-for b = 1:numel(dqSNList),    
+for b = 1:numBarometers,    
     I = find(dqSN == dqSNList(b));    
     plot(dqTM(I)/3600, dqBP(I))
     hold on    
@@ -114,7 +123,8 @@ grid on
 xlabel('Sample Time (hours since midnight UTC)')
 ylabel('Barometric Pressure (hPa)')
 
-titleStr = sprintf('Raw Barometric Pressure Data - %s',dqDirName(end-13:end));
+I = strfind(dqDirName,'/');
+titleStr = sprintf('%s\nRaw Barometric Pressure Data',dqDirName(I(end)+1:end));
 title(titleStr)
 
 hold off
@@ -125,7 +135,7 @@ hold off
 
 figure
 
-for b = 1:numel(dqSNList),     
+for b = 1:numBarometers,     
     I = find(dqSN == dqSNList(b));    
     plot(1./diff(dqTM(I))+(b-1))
     hold on    
@@ -137,7 +147,8 @@ grid on
 xlabel('Sample Index')
 ylabel('Sample Rate (Hz)')
 
-titleStr = sprintf('Sample Rate Data - %s',dqDirName(end-13:end));
+I = strfind(dqDirName,'/');
+titleStr = sprintf('%s\nRaw Sample Rate Data',dqDirName(end-19:end));
 title(titleStr)
 
 axis([xlim 0 50])
@@ -171,13 +182,21 @@ while ( blockEndTime < max(dqTM) ),
     % print a progress message
     %
     
-    disp(['INFO - processing data for hour = ',num2str(blockStartTime/3600,'%0.2f')])
+    disp(['INFO - processing data for hour = ',num2str(blockStartTime/3600,'%0.3f')])
     
     %
     % get the pressure data for the current block
     %
-    
+        
     for b = 1:numBarometers,
+        
+        % initialize variables for storing block processing results for
+        % the current barometer
+        dqt{b}   = [];
+        dqx{b}   = [];
+        dqxf{b}  = [];        
+        dqf{b}   = [];
+        dqPxx{b} = [];
         
         % get indices of samples associated with current barometer
         I = find(dqSN == dqSNList(b));
@@ -185,29 +204,29 @@ while ( blockEndTime < max(dqTM) ),
         % get indices of samples in the current block
         J = find(dqTM(I) >= blockStartTime & dqTM(I) < blockEndTime);
         
-        % continue if current barometer no samples in the current block
+        % continue if current barometer has no samples in the current block
         if ( isempty(J) ),
             disp(['WARNING - ',num2str(dqSNList(b)),' has no samples in current block'])
             continue
         end
         
         % continue if the number of samples is less than 90% of expected
-        if ( numel(J) < 0.90 * (samplePeriod(b) * blockSizeInSec) ),
+        if ( numel(J) < 0.90 * ( blockSizeInSec / samplePeriod(b) ) ),
             disp(['WARNING - pressure samples in segment = ',num2str(numel(dqIndx)),', number expected = ',num2str(samplePeriod(b) * blockSizeInSec)])
             continue
         end
 
         % copy the block of pressure data for current barometer to local variables
-        DQt = dqTM(I(J));
-        DQx = dqBP(I(J));
+        dqt{b} = dqTM(I(J));
+        dqx{b} = dqBP(I(J));
         
         % print number of samples vs. number expected
         dispStr = sprintf('  serial: %d, %d samples of %d expected',...
-            dqSNList(b), length(DQx), round(blockSizeInSec / samplePeriod(b)));
+            dqSNList(b), length(dqx{b}), round(blockSizeInSec / samplePeriod(b)));        
         disp(dispStr)
         
         % linear interpolate missing samples, if any
-        diffTM = diff(DQt);
+        diffTM = diff(dqt{b});
         I = find(diffTM > 1.9 * samplePeriod(b));        
         if ( numel(I) > 0 ),
             
@@ -215,20 +234,21 @@ while ( blockEndTime < max(dqTM) ),
             tmpBP = [];
             
             for m = 1:numel(I),                
-                deltaTM = DQt(I(m)+1) - DQt(I(m));                
+%                 deltaTM = DQt(I(m)+1) - DQt(I(m));
+                deltaTM = dqt{b}(I(m)+1) - dqt{b}(I(m));
                 numMissing = round( deltaTM / samplePeriod(b) ) - 1;
-                tmpTM = [tmpTM; DQt(I(m)) + samplePeriod(b) * [1:numMissing]'];
+                tmpTM = [tmpTM; dqt{b}(I(m)) + samplePeriod(b) * [1:numMissing]'];
                 tmpBP = [tmpBP; nan(numMissing,1)];                
             end
             
-            DQt = [DQt;tmpTM];
-            DQx = [DQx;tmpBP];
+            dqt{b} = [dqt{b};tmpTM];
+            dqx{b} = [dqx{b};tmpBP];
             
-            [DQt,I] = sort(DQt,'ascend');
-            DQx = DQx(I);
+            [dqt{b},I] = sort(dqt{b},'ascend');
+            dqx{b} = dqx{b}(I);
     
-            [F,DQTF] = fillmissing(DQx,'linear','SamplePoints',DQt);
-            DQx(DQTF) = F(DQTF);
+            [F,DQTF] = fillmissing(dqx{b},'linear','SamplePoints',dqt{b});
+            dqx{b}(DQTF) = F(DQTF);
     
 %             figure(100)
 %             plot(DQt/3600,DQx,'-b')
@@ -245,63 +265,137 @@ while ( blockEndTime < max(dqTM) ),
         %
 
         % convert the pressure data from hPa to Pa
-        DQx = 100 * DQx;
+        dqx{b} = 100 * dqx{b};
 
         % calculate the mean pressure sample rate
-        dqFs = 1 / mean(diff( DQt ));
+        dqFs = 1 / mean(diff( dqt{b} ));
 
-        % design a band pass filter
-        filter_order       = 4;
-        cutoff_lo          = 0.01;
-        cutoff_hi          = 9.9;
-        normalized_freq_lo = cutoff_lo / (0.5 * dqFs); 
-        normalized_freq_hi = cutoff_hi / (0.5 * dqFs);
-        [filt_b,filt_a] = butter(filter_order,...
-            [normalized_freq_lo normalized_freq_hi],...
-            'bandpass');
+%         % design a band pass filter
+%         filter_order       = 4;
+%         cutoff_lo          = 0.01;
+%         cutoff_hi          = 9.9;
+%         normalized_freq_lo = cutoff_lo / (0.5 * dqFs); 
+%         normalized_freq_hi = cutoff_hi / (0.5 * dqFs);
+%         [filt_b,filt_a] = butter(filter_order,...
+%             [normalized_freq_lo normalized_freq_hi],...
+%             'bandpass');
 
         % apply the band pass filter to extract the local wind
         % generated infrasound signal from the pressure signal
-        DQxf = filtfilt(filt_b,filt_a,DQx);
-
+%         DQxf = filtfilt(filt_b,filt_a,DQx);
+        
+%         % subtract the mean to remove the barometeric pressure DC bias
+%         meanDQx = mean(dqx{b});
+%         dqxf{b} = dqx{b} - meanDQx;
+        
+        % detrend the data
+        dqxf{b} = detrend(dqx{b});
+        
         % compute the power spectral density of the filtered
         % pressure data using Welch's method
-        B = 1000;  % Welch block size
-        O = 500;   % samples overlap 50%
-        NFFT = 2^nextpow2(B);
-        [DQPxx,F] = pwelch(DQxf,hamming(B),O,NFFT,dqFs,'onesided','psd');
-        DQPxxdB = 10*log10(DQPxx);
+% %         B = 1200;  % Welch block size in samples
+%         B = ceil( blockSizeInSec / samplePeriod(b) );
+%         O = 0;     % samples overlap 50%
+        NFFT = 2^nextpow2(welchB);
+        [dqPxx{b},dqf{b}] = pwelch(dqxf{b},hamming(welchB),welchO,NFFT,dqFs,'onesided','psd');
+        dqPxx{b} = 10*log10(dqPxx{b});
 
-        % plot the infrasound signal and associated power spectrum
-        if b == 1,
-
-            figure(200)
-
-            subplot(2,1,1)
-            plot(DQt/3600,DQxf,'-b')
-            grid on
-            xlabel('Hour Since Midnight (UTC)')
-            ylabel('Infrasound Level (Pa)')
-
-            subplot(2,1,2)
-            plot(F(2:end),DQPxxdB(2:end),'-b')
-            grid on
-            xlabel('Frequency (Hz)')
-            ylabel('Pa^2/Hz (dB)')
-            titleStr = sprintf('Infrasound Power Spectrum');
-            title(titleStr)
-
-            pause(0.1)
-
-        end
+%         % plot the infrasound signal and associated power spectrum
+% %         if b == 1,
+% 
+% %             figure(199+b)
+% 
+%             figure(200)
+% 
+%             subplot(2,1,1)
+% %             plot(DQt/3600,DQxf,'-b')
+% %             plot(DQt-DQt(1),DQxf,'-b') 
+%             
+%             plot(DQt-DQt(1),DQxf) 
+%             
+%             grid on
+%             xlabel('Sec Since Block Start')
+%             ylabel('Infrasound Level (Pa)')
+%             
+%             hold on
+%             
+%             titleStr = sprintf('Hour: %0.2f, Barometer: %d',DQt(1)/3600,dqSNList(b));
+%             title(titleStr)
+% 
+%             subplot(2,1,2)
+% %             plot(F(2:end),DQPxxdB(2:end),'-b')
+% %             semilogx(F(2:end),DQPxxdB(2:end),'-b')
+% 
+%             semilogx(F(2:end),DQPxxdB(2:end))
+%             
+%             grid on
+%             xlabel('Frequency (Hz)')
+%             ylabel('Pa^2/Hz (dB)')
+%             titleStr = sprintf('Infrasound Power Spectrum');
+%             title(titleStr)
+% 
+%             hold on
+%             
+% %             pause(0.1)
+% %             pause
+% 
+% %         end
         
         % save the power spectral density for the current block/barometer
         PSDtime{b} = [PSDtime{b}, blockStartTime + ( blockEndTime - blockStartTime ) / 2];
-        PSDdata{b} = [PSDdata{b}, DQPxxdB];
+        PSDdata{b} = [PSDdata{b}, dqPxx{b}];
     
     end  % end for each barometer
     
+    %
+    % plot the infrasound signal(s) and spectra
+    %
+    
+    figure(200)
+
+    subplot(2,1,1)
+
+    for b = 1:numBarometers
+        plot(dqt{b}-dqt{b}(1),dqxf{b})
+        hold on
+    end
+    hold off
+    
+    legend(num2str(dqSNList))
+
+    grid on
+    xlabel('Sec Since Block Start')
+    ylabel('Infrasound Level (Pa)')
+    
+    I = strfind(dqDirName,'/');
+    titleStr = sprintf('%s - hour - %0.3f\nInfrasound Signal',...
+        dqDirName(end-19:end),...
+        dqt{1}(1)/3600);
+    title(titleStr)
+
+    subplot(2,1,2)
+    
+    for b = 1:numBarometers
+%         plot(dqf{b},dqPxx{b})
+        semilogx(dqf{b},dqPxx{b})
+        hold on
+    end
+    hold off
+
+    legend(num2str(dqSNList))
+
+    grid on
+    xlabel('Frequency (Hz)')
+    ylabel('Pa^2/Hz (dB)')
+    titleStr = sprintf('Infrasound Power Spectrum');
+    title(titleStr)
+
+    pause
+    
+    %
     % advance to the next block
+    %
+    
     blockStartTime = blockEndTime;
     blockEndTime = blockStartTime + blockSizeInSec;
     
@@ -310,6 +404,13 @@ end
 %% =======================================================================
 % plot the spectrogram for each barometer
 %
+
+return
+
+
+
+
+
 
 for b = 1:numBarometers,
     
