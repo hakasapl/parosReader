@@ -1,4 +1,4 @@
-# dq-repo
+# parosReader
 Repository for the CASA Infrasound Lab
 
 # Dependencies
