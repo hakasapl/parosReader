@@ -1,4 +1,4 @@
-# dq-repo
+# parosReader
 Repository for the CASA Infrasound Lab
 
 # Dependencies
@@ -14,8 +14,8 @@ apt-get install git gcc screen
 # Compiling the Code
 You can compile the code with:
 ```
-git clone https://github.com/dpepyne/dq-repo.git
-cd dq-repo
+git clone https://github.com/UmassCASA/parosReader.git
+cd parosreader
 chmod +x compile.sh run.sh
 ./compile.sh
 ```
