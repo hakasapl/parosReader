@@ -15,7 +15,7 @@ apt-get install git gcc screen
 You can compile the code with:
 ```
 git clone https://github.com/UmassCASA/parosReader.git
-cd parosreader
+cd parosreader/src
 chmod +x compile.sh run.sh
 ./compile.sh
 ```
