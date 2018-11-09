@@ -5,14 +5,14 @@
 #               - Assumes model 6000-16B-IS barometers
 #               - Uses P4 continuous sampling
 #
-#   usage: ./dqLoggerP4.py [-h] [-t] [-v] [-d LOGDIR]
+#   usage: ./dqLogger.py [-h] [-t] [-v] [-d LOGDIR]
 #
 #   D.L. Pepyne and Westy
 #   Copyright 2018 __University of Massachusetts__. All rights reserved.
 #
 #   Revision: 19 March 2018; 1 May 2018; 8 May 2018; 9 May 2018; 12 May 2018; 4 June 2018;
 #             7 June 2018; 8 June 2018; 23 June 2018; 24 June 2018; 25 June 2018;
-#             9 July 2018; 10 July 2018; 11 July 2018
+#             9 July 2018; 10 July 2018; 11 July 2018; added to git...
 #
 
 import time
@@ -33,7 +33,7 @@ import numpy as np
 # loses power or otherwise fails to respond - here we've modified the original code
 # to return on serial port timeout
 #
-# orignal code obtained from: https://github.com/pyserial/pyserial/issues/216
+# original code obtained from: https://github.com/pyserial/pyserial/issues/216
 #
 
 class ReadLine:
