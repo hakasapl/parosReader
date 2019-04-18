@@ -204,8 +204,19 @@ def main():
             print("    found serial number:\tSN=" + dqSerialNumber)
             dqPortList.append(dqPort)
             dqSerialNumberList.append(dqSerialNumber)
-        else:
-            dqPort.close()
+        else: 
+            # try twice
+            print("try again! got this: " + dqModelNumber)
+            dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
+            if "6000-16B-IS" in dqModelNumber:
+                tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
+                dqSerialNumber = tempStr[3:]
+                print("    found serial number:\tSN=" + dqSerialNumber)
+                dqPortList.append(dqPort)
+                dqSerialNumberList.append(dqSerialNumber)
+            else:
+                dqPort.close()
+
 
     if dqPortList:
         numBarometers = len(dqPortList)
