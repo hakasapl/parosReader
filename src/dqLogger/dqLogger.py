@@ -180,7 +180,7 @@ def main():
     
     while True:
     
-        print("\nChecking for barometers...\n")
+        print("\nLooking for 4 barometers (no more, no less)...\n")
 
         dqPortList = []
         dqSerialNumberList = []
