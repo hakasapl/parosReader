@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# dqLogger4NRG.py - Python script to log Paroscientific DigiQuartz barometer data
+# dqLogger.py - Python script to log Paroscientific DigiQuartz barometer data
 #               - For wind profiler experiment at NRG in Vermont - Summer 2018
 #               - Assumes model 6000-16B-IS barometers
 #               - Uses P4 continuous sampling
