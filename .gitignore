@@ -2,3 +2,7 @@
 /src/data-*/
 /src/DQLOG-*/
 /src/wxtlogger_t
+/src/dqLogger/DQLOG-*/
+/src/pid.txt
+/src/voltage_anemometer/WindSpeedLog-*/
+/src/nohup.out
