@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# dqLogger4NRG.py - Python script to log Paroscientific DigiQuartz barometer data
+# dqLogger.py - Python script to log Paroscientific DigiQuartz barometer data
 #               - For wind profiler experiment at NRG in Vermont - Summer 2018
 #               - Assumes model 6000-16B-IS barometers
 #               - Uses P4 continuous sampling
@@ -178,42 +178,58 @@ def main():
     # check usbserial ports for barometers, quit if none
     #
     
-    print("\nChecking for barometers...\n")
+    while True:
+    
+        print("\nLooking for 4 barometers (no more, no less)...\n")
 
-    dqPortList = []
-    dqSerialNumberList = []
-    for usbPort in usbPortList:
-        print("  checking: " + usbPort)
-        dqPort = serial.Serial()
-        dqPort.port = usbPort
-        if dqPort.isOpen():
-            dqPort.close()
-        dqPort.baudrate = 115200
-        dqPort.bytesize = serial.EIGHTBITS
-        dqPort.parity = serial.PARITY_NONE
-        dqPort.stopbits = serial.STOPBITS_ONE
-        dqPort.timeout = 0.2  # needs to be long enough to wake barometer and get response
-        dqPort.open()
+        dqPortList = []
+        dqSerialNumberList = []
+        for usbPort in usbPortList:
+            print("  checking: " + usbPort)
+            dqPort = serial.Serial()
+            dqPort.port = usbPort
+            if dqPort.isOpen():
+                dqPort.close()
+            dqPort.baudrate = 115200
+            dqPort.bytesize = serial.EIGHTBITS
+            dqPort.parity = serial.PARITY_NONE
+            dqPort.stopbits = serial.STOPBITS_ONE
+            dqPort.timeout = 0.2  # needs to be long enough to wake barometer and get response
+            dqPort.open()
 
-        waitFlag = 0  # no response within timeout --> no barometer
+            waitFlag = 0  # no response within timeout --> no barometer
 
-        dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
-        if "6000-16B-IS" in dqModelNumber:
-            tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
-            dqSerialNumber = tempStr[3:]
-            print("    found serial number:\tSN=" + dqSerialNumber)
-            dqPortList.append(dqPort)
-            dqSerialNumberList.append(dqSerialNumber)
+            dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
+            if "6000-16B-IS" in dqModelNumber:
+                tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
+                dqSerialNumber = tempStr[3:]
+                print("    found serial number:\tSN=" + dqSerialNumber)
+                dqPortList.append(dqPort)
+                dqSerialNumberList.append(dqSerialNumber)
+            else: 
+                # try twice
+                print("try again! got this: " + dqModelNumber)
+                dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
+                if "6000-16B-IS" in dqModelNumber:
+                    tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
+                    dqSerialNumber = tempStr[3:]
+                    print("    found serial number:\tSN=" + dqSerialNumber)
+                    dqPortList.append(dqPort)
+                    dqSerialNumberList.append(dqSerialNumber)
+                else:
+                    dqPort.close()
+
+        if dqPortList:
+            numBarometers = len(dqPortList)
+            print("\n  " + str(numBarometers) + " barometer(s) found")
+            if numBarometers == 4:
+                break
+            else: 
+               print("not enough barometers found! trying again\n:")
         else:
-            dqPort.close()
-
-    if dqPortList:
-        numBarometers = len(dqPortList)
-        print("\n  " + str(numBarometers) + " barometer(s) found")
-    else:
-        print("\n  no 6000-16B-IS barometer(s) found\n")
-        print("Quitting\n")
-        exit()
+            print("\n  no 6000-16B-IS barometer(s) found! trying again\n")
+ 
+    # END OF WHILE TRUE
 
     #
     # configure barometers for infrasound sampling

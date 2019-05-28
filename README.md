@@ -2,23 +2,21 @@
 Repository for the CASA Infrasound Lab
 
 # Dependencies
-* gcc
-* screen
-* git
+x* git
 
 ```
 apt-get update
 apt-get install git gcc screen
 ```
 
-# Compiling the Code
+# Installing the Code
 You can compile the code with:
 ```
 git clone https://github.com/UmassCASA/parosReader.git
 cd parosreader/src
-chmod +x compile.sh run.sh
-./compile.sh
+chmod +x run.sh
 ```
+
 # Running the Program
 Execute the following commands as root
 ```
