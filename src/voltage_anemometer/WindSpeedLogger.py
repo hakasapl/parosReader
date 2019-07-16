@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import time
 import sys
 import os
@@ -44,11 +44,11 @@ try:
             if logFile is not None:
                 print('log file is not None')
                 logFile.close()
-            logDirectoryName = "WindSpeedLog-{0:%Y%m%d}".format(datetime.utcnow())
+            logDirectoryName = "WXLOG-{0:%Y%m%d}".format(datetime.utcnow())
             print('logDir name {0}'.format(logDirectoryName))
             if not os.path.exists(logDirectoryName):
                 os.makedirs(logDirectoryName)
-            logFileName = "WS-{0:%Y%m%d-%H%M%S}.txt".format(datetime.utcnow())
+            logFileName = "WX-{0:%Y%m%d-%H%M%S}.txt".format(datetime.utcnow())
             print('logFile name {0}'.format(logFileName))
             logFilePath = os.path.join(logDirectoryName, logFileName)
             print('logFile path {0}'.format(logFilePath))
@@ -59,12 +59,12 @@ try:
         value = adc.get_last_result()
         voltage = value*0.0001250038148/GAIN
         speed = voltage*20.25-8.1-.06
-        datastring = '{0:%Y%m%d-%H%M%S}: Channel 0: {1:.5f} volts, {2:.1f} m/s\n'.format(datetime.utcnow() , voltage, speed)
-        print('Channel 0: {0:.5f} volts, {1:.1f} m/s'.format(voltage, speed))
+        datastring = '{0:%Y-%m-%dT%H:%M:%SZ} {1:.5f}vdc {2:.1f}m/s\n'.format(datetime.utcnow() , voltage, speed)
+        print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
         logFile.write(datastring)
         #logFile.write("test")
         # Sleep for half a second.
-        time.sleep(0.5)
+        time.sleep(1.0)
 finally:
     print("Quitting...\n")
     logFile.close()
