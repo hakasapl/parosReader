@@ -2,7 +2,7 @@
 Repository for the CASA Infrasound Lab
 
 # Dependencies
-x* git
+* git
 
 ```
 apt-get update
