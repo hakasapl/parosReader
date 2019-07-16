@@ -18,7 +18,9 @@ chmod +x run.sh
 ```
 
 # Running the Program
-Execute the following commands as root
+We like to run with nohup just in case:
 ```
-./run.sh
+ nohup ./run.sh 
 ```
+
+Also maybe delete the old nohup.out file first (no worries, it will append to the end if you don't).
