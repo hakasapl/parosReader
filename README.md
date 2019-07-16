@@ -10,7 +10,7 @@ apt-get install git gcc screen
 ```
 
 # Installing the Code
-You can compile the code with:
+You can installl the scripts with:
 ```
 git clone https://github.com/UmassCASA/parosReader.git
 cd parosreader/src
