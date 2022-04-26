@@ -5,4 +5,6 @@
 /src/dqLogger/DQLOG-*/
 /src/pid.txt
 /src/voltage_anemometer/WindSpeedLog-*/
+/src/voltage_anemometer/WXLOG-*/
 /src/nohup.out
+/src/nohup.out.ioerror

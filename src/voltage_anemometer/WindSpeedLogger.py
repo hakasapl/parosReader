@@ -30,6 +30,7 @@ adc.start_adc(0, gain=GAIN)
 #while True:
 # initialize current hour to a negative number to force a new log file with first sample
 try:
+    verbose = False
     logFile = None
     currentUTCHour = -1
     print("\nRunning...quit with ctrl-C...\n")
@@ -60,7 +61,8 @@ try:
         voltage = value*0.0001250038148/GAIN
         speed = voltage*20.25-8.1-.06
         datastring = '{0:%Y-%m-%dT%H:%M:%SZ} {1:.5f}vdc {2:.1f}m/s\n'.format(datetime.utcnow() , voltage, speed)
-        print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
+        if verbose:
+            print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
         logFile.write(datastring)
         #logFile.write("test")
         # Sleep for half a second.
