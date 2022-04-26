@@ -6,7 +6,7 @@ Repository for the CASA Infrasound Lab
 
 ```
 apt-get update
-apt-get install git gcc screen
+apt-get install git
 ```
 
 # Installing the Code
