@@ -114,6 +114,7 @@ def main():
                         action="store",
                         default="./",
                         help="top level directory for log files, use \"\" around names with white space (default = ./)")
+    parser.add_argument("-n", "--numsensors", "Number of barometers", default=2)
     parser.add_argument("-h", "--hostname", "Address of remote rabbitmq server", default="")
     parser.add_argument("-u", "--username", "Username of remote rabbitmq server", default="")
     parser.add_argument("-p", "--password", "Password of remote rabbitmq server", default="")
@@ -233,6 +234,10 @@ def main():
         if dqPortList:
             numBarometers = len(dqPortList)
             print("\n  " + str(numBarometers) + " barometer(s) found")
+            if numBarometers == args.numsensors:
+                break
+            else: 
+               print("not enough barometers found! trying again\n:")
         else:
             print("\n  no 6000-16B-IS barometer(s) found! trying again\n")
  
