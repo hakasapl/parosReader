@@ -6,6 +6,9 @@ import datetime
 from datetime import datetime
 import glob
 import argparse
+import pika
+import json
+import socket
 
 # Import the ADS1x15 module.
 import Adafruit_ADS1x15
@@ -26,6 +29,33 @@ GAIN = 2
 # example and read_adc function for more infromation.
 adc.start_adc(0, gain=GAIN)
 
+parser = argparse.ArgumentParser(description='Logs anemometer data')
+parser.add_argument("-d", "--logDir",
+                    type=str,
+                    action="store",
+                    default="./",
+                    help="top level directory for log files, use \"\" around names with white space (default = ./)")
+parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
+parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
+parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
+
+#
+# parse user input
+#
+
+args = parser.parse_args()
+
+#
+# get system info
+#
+cur_hostname = socket.gethostname()
+
+if args.hostname != "":
+    credentials = pika.PlainCredentials(args.username, args.password)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
+    channel = connection.channel()
+
+    channel.queue_declare(queue='parosLogger')
 
 #while True:
 # initialize current hour to a negative number to force a new log file with first sample
@@ -60,9 +90,23 @@ try:
         value = adc.get_last_result()
         voltage = value*0.0001250038148/GAIN
         speed = voltage*20.25-8.1-.06
+        cur_timestamp = '{0:%Y-%m-%dT%H:%M:%SZ}'.format(datetime.utcnow())
         datastring = '{0:%Y-%m-%dT%H:%M:%SZ} {1:.5f}vdc {2:.1f}m/s\n'.format(datetime.utcnow() , voltage, speed)
         if verbose:
             print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
+        
+        # send to rabbitmq, if set
+        if args.hostname != "":
+            mq_msg_json = {
+                "device_id": cur_hostname,
+                "sensor_id": "animometer",
+                "timestamp": cur_timestamp,
+                "voltage": voltage,
+                "value": speed
+            }
+            
+            channel.basic_publish(exchange='', routing_key='parosLogger', body=json.dumps(mq_msg_json))
+
         logFile.write(datastring)
         #logFile.write("test")
         # Sleep for half a second.
@@ -71,3 +115,7 @@ finally:
     print("Quitting...\n")
     logFile.close()
     adc.stop_adc()
+
+# close rabbitmq connection
+if args.hostname != "":
+    connection.close()

@@ -114,10 +114,10 @@ def main():
                         action="store",
                         default="./",
                         help="top level directory for log files, use \"\" around names with white space (default = ./)")
-    parser.add_argument("-n", "--numsensors", "Number of barometers", default=2)
-    parser.add_argument("-h", "--hostname", "Address of remote rabbitmq server", default="")
-    parser.add_argument("-u", "--username", "Username of remote rabbitmq server", default="")
-    parser.add_argument("-p", "--password", "Password of remote rabbitmq server", default="")
+    parser.add_argument("-n", "--numsensors", help="Number of barometers", type=int, default=2)
+    parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
 
     #
     # parse user input
@@ -238,6 +238,7 @@ def main():
                 break
             else: 
                print("not enough barometers found! trying again\n:")
+               time.sleep(5)
         else:
             print("\n  no 6000-16B-IS barometer(s) found! trying again\n")
  
@@ -430,6 +431,14 @@ def main():
             # readline method - note also that a barometer is considered failed and
             # is ignored after 3 consecutive timeouts
             #
+
+            # open rabbitmq
+            if args.hostname != "":
+                credentials = pika.PlainCredentials(args.username, args.password)
+                connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
+                channel = connection.channel()
+
+                channel.queue_declare(queue='parosLogger')
             
             for dqIndex, dqSN, dqDevice, dqFailures in zip(range(len(dqPortList)), dqSerialNumberList, dqDeviceList, dqFailuresList):
                 if dqFailures < 3:
@@ -445,6 +454,15 @@ def main():
                     dqFailures = 0
                     dqFailuresList[dqIndex] = dqFailures
                     strIn = binIn.decode()
+                    in_parts = strIn.split(",")
+
+                    try:
+                        cur_timestamp = in_parts[1].rstrip()
+                        cur_value = in_parts[2].rstrip()
+                    except:
+                        cur_timestamp = "ERROR"
+                        cur_value = strIn
+                    
                     if testmodeFlag:
                         print("  " + dqSN + ", " + strIn)
                     else:
@@ -453,22 +471,19 @@ def main():
                         logFile.write(logLine + "\n")
 
                         # send to rabbitmq, if set
-                        if args.hostname is not "":
-                            print(strIn[7:-2])  # DEBUG
+                        if args.hostname != "":
                             mq_msg_json = {
                                 "device_id": cur_hostname,
                                 "sensor_id": dqSN,
-                                "data": strIn[7:-2]
+                                "timestamp": cur_timestamp,
+                                "value": cur_value
                             }
+                            
+                            channel.basic_publish(exchange='', routing_key='parosLogger', body=json.dumps(mq_msg_json))
 
-                            credentials = pika.PlainCredentials(args.username, args.password)
-                            connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
-                            channel = connection.channel()
-
-                            channel.queue_declare(queue='dqLogger')
-                            channel.basic_publish(exchange='', routing_key='dqLogger', body=json.dumps(mq_msg_json))
-
-                            connection.close()
+            # close rabbitmq connection
+            if args.hostname != "":
+                connection.close()
 
             #
             # handle barometer failures
