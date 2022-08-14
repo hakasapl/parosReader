@@ -6,7 +6,7 @@ Wants=network.target
 [Service]
 WorkingDirectory=/home/pi/parosReader/src/dqLogger
 ExecStart=/home/pi/parosReader/run/baro.sh
-Restart=Always
+Restart=always
 User=pi
 
 [Install]

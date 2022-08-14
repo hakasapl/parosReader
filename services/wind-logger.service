@@ -6,7 +6,7 @@ Wants=network.target
 [Service]
 WorkingDirectory=/home/pi/parosReader/src/voltage_anemometer
 ExecStart=/home/pi/parosReader/run/wind.sh
-Restart=Always
+Restart=always
 User=pi
 
 [Install]
