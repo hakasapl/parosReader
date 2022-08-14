@@ -1,11 +1,9 @@
 #!/bin/bash
 
-apt install -y python3-pip python3-smbus i2c-tools usbmuxd
+apt install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
 pip install pika
 pip install Adafruit-ADS1x15
-pip install pandas
-pip install numpy
-pip install matplotlib
+pip install pySerial
 
 git_location="/home/pi/parosReader"
 chown pi:pi -R $git_location
@@ -21,21 +19,21 @@ read rmq
 if [ "$rmq" = "y" ]; then
     echo "Setting up to also send to rabbitmq..."
     cp $git_location/baro-logger-mq.service /etc/systemd/system/baro-logger.service
-    cp $git_location/anim-logger-mq.service /etc/systemd/system/anim-logger.service
+    cp $git_location/wind-logger-mq.service /etc/systemd/system/wind-logger.service
 else
     echo "Not sending to rabbitmq"
     cp $git_location/baro-logger.service /etc/systemd/system/baro-logger.service
-    cp $git_location/anim-logger.service /etc/systemd/system/anim-logger.service
+    cp $git_location/wind-logger.service /etc/systemd/system/wind-logger.service
 fi
 
 systemctl daemon-reload
 systemctl enable baro-logger
-systemctl enable anim-logger
+systemctl enable wind-logger
 
 mkdir /opt/DQLOG
 chown pi:pi /opt/DQLOG
 
-mkdir /opt/ANIMLOG
-chown pi:pi /opt/ANIMLOG
+mkdir /opt/WINDLOG
+chown pi:pi /opt/WINDLOG
 
 echo "Remember to enable I2C bus using raspi-config, and set the hostname. Then you can reboot to begin"
