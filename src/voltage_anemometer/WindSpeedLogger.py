@@ -75,7 +75,7 @@ try:
             if logFile is not None:
                 print('log file is not None')
                 logFile.close()
-            logDirectoryName = "WXLOG-{0:%Y%m%d}".format(datetime.utcnow())
+            logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
             print('logDir name {0}'.format(logDirectoryName))
             if not os.path.exists(logDirectoryName):
                 os.makedirs(logDirectoryName)
