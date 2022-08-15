@@ -39,7 +39,7 @@ fi
 
 # installing apt prerequisites
 echoGreen "Installing APT Prerequisites...\n"
-apt install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
+apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
 if [ $? -ne 0 ]; then
     echoRed "Error installing apt packages\n"
     exit 1
@@ -129,7 +129,7 @@ chown pi:pi $wind_log_loc
 
 echoGreen "Should logging be autostarted on boot (y/n)? "
 read enable_logger
-if [ "enable_logger" = "y" ]; then
+if [ "$enable_logger" = "y" ]; then
     systemctl enable baro-logger
     systemctl enable wind-logger
 else
