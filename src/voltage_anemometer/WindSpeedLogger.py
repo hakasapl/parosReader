@@ -92,7 +92,7 @@ try:
         voltage = round(voltage, 10)
         speed = voltage*20.25-8.1-.06
         speed = round(speed, 10)
-        cur_timestamp = '{0:%m/%d/%y %H:%M:%S.000}'.format(datetime.utcnow())
+        cur_timestamp = '{0:%m/%d/%y %H:%M:%S.%f}'.format(datetime.utcnow())
 
         if verbose:
             print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
