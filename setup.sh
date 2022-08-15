@@ -39,7 +39,8 @@ fi
 
 # installing apt prerequisites
 echoGreen "Installing APT Prerequisites...\n"
-apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
+apt-get update
+apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools
 if [ $? -ne 0 ]; then
     echoRed "Error installing apt packages\n"
     exit 1
