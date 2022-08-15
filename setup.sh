@@ -66,8 +66,8 @@ read baro_wind_loc
 wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
-baro_cmd="python3 dqLogger.py -d ${baro_log_loc} -n ${num_baro}"
-wind_cmd="python3 WindSpeedLogger.py -d ${wind_log_loc}"
+baro_cmd="python3 ${git_location}/src/dqLogger/dqLogger.py -d ${baro_log_loc} -n ${num_baro}"
+wind_cmd="python3 ${git_location}/src/voltage_anemometer/WindSpeedLogger.py -d ${wind_log_loc}"
 
 # password prompt function
 getRmqPass() {
@@ -132,6 +132,9 @@ read enable_logger
 if [ "enable_logger" = "y" ]; then
     systemctl enable baro-logger
     systemctl enable wind-logger
+else
+    systemctl disable baro-logger
+    systemctl disable wind-logger
 fi
 
 echoGreen "Should we start logging now (y/n)? "
@@ -139,6 +142,9 @@ read start_logger
 if [ "$start_logger" = "y" ]; then
     systemctl start baro-logger
     systemctl start wind-logger
+else
+    systemctl stop baro-logger
+    systemctl stop wind-logger
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
