@@ -65,27 +65,28 @@ try:
     logFile = None
     currentUTCHour = -1
     print("\nRunning...quit with ctrl-C...\n")
+
+
+    currentUTCHour = datetime.utcnow().hour
+    if logFile is not None:
+        print('log file is not None')
+        logFile.close()
+    logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
+    print('logDir name {0}'.format(logDirectoryName))
+    if not os.path.exists(logDirectoryName):
+        os.makedirs(logDirectoryName)
+    logFileName = "WX-{0:%Y%m%d-%H%M%S}.txt".format(datetime.utcnow())
+    print('logFile name {0}'.format(logFileName))
+    logFilePath = os.path.join(logDirectoryName, logFileName)
+    print('logFile path {0}'.format(logFilePath))
+
     while True:
         #
         # open a new log file on change in hour of day
         #
         #                if datetime.utcnow().minute != currentUTCHour:
         #                    currentUTCHour = datetime.utcnow().minute
-        if datetime.utcnow().hour != currentUTCHour:
-            currentUTCHour = datetime.utcnow().hour
-            if logFile is not None:
-                print('log file is not None')
-                logFile.close()
-            logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
-            print('logDir name {0}'.format(logDirectoryName))
-            if not os.path.exists(logDirectoryName):
-                os.makedirs(logDirectoryName)
-            logFileName = "WX-{0:%Y%m%d-%H%M%S}.txt".format(datetime.utcnow())
-            print('logFile name {0}'.format(logFileName))
-            logFilePath = os.path.join(logDirectoryName, logFileName)
-            print('logFile path {0}'.format(logFilePath))
-            print("  opening log file: " + logFilePath + "\n")
-            logFile = open(logFilePath, "w")
+        logFile = open(logFilePath, "a")
         # Read the last ADC conversion value and print it out.
         value = adc.get_last_result()
         voltage = value*0.0001250038148/GAIN
@@ -109,7 +110,7 @@ try:
             
             channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
 
-        datastring = cur_timestamp + "," + str(voltage) + "," + str(speed)
+        datastring = cur_timestamp + "," + str(voltage) + "," + str(speed) + "\n"
         print(datastring)
         logFile.write(datastring)
         #logFile.write("test")
