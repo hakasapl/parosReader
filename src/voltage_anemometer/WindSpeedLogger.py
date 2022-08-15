@@ -92,7 +92,7 @@ try:
         voltage = round(voltage, 10)
         speed = voltage*20.25-8.1-.06
         speed = round(speed, 10)
-        cur_timestamp = '{0:%Y/%m/%d %H:%M:%S.000}'.format(datetime.utcnow())
+        cur_timestamp = '{0:%m/%d/%y %H:%M:%S.000}'.format(datetime.utcnow())
 
         if verbose:
             print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
@@ -100,7 +100,7 @@ try:
         # send to rabbitmq, if set
         if args.hostname != "":
             mq_msg_json = {
-                "device_id": cur_hostname,
+                "module_id": cur_hostname,
                 "sensor_id": "anemometer",
                 "timestamp": cur_timestamp,
                 "voltage": voltage,

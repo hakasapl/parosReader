@@ -466,6 +466,7 @@ def main():
                     
                     # log actual data
                     logLine = dqSN + "," + strIn[7:-2]
+                    print(logLine)
                     logFile.write(logLine + "\n")
 
                     # send to rabbitmq, if set
