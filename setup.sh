@@ -40,7 +40,7 @@ fi
 # installing apt prerequisites
 echoGreen "Installing APT Prerequisites...\n"
 apt-get update
-apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools
+apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
 if [ $? -ne 0 ]; then
     echoRed "Error installing apt packages\n"
     exit 1
@@ -53,6 +53,18 @@ if [ $? -ne 0 ]; then
     echoRed "Error installing PyPI packages\n"
     exit 1
 fi
+
+# setup GPS
+echoGreen "Setting up GPS...\n"
+grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
+
+systemctl enable gpsd.socket
+systemctl start gpsd.socket
+systemctl enable gpsd
+systemctl start gpsd
+
+grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
 echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
@@ -128,7 +140,7 @@ echoGreen "Creating wind speed log directory...\n"
 mkdir -p $wind_log_loc
 chown pi:pi $wind_log_loc
 
-echoGreen "Should logging be autostarted on boot (y/n)? "
+echoYellow "Should logging be autostarted on boot (y/n)? "
 read enable_logger
 if [ "$enable_logger" = "y" ]; then
     systemctl enable baro-logger
@@ -138,7 +150,7 @@ else
     systemctl disable wind-logger
 fi
 
-echoGreen "Should we start logging now (y/n)? "
+echoYellow "Should we start logging now (y/n)? "
 read start_logger
 if [ "$start_logger" = "y" ]; then
     systemctl start baro-logger
@@ -158,4 +170,5 @@ echo "For wind speed logging control, use 'systemctl start wind-logger' or 'syst
 echo "To view logs for wind-logger, use 'journalctl -eu wind-logger'"
 echo ""
 echo "You can rerun this script anytime to change parameters of the deployment"
+echo "If this is the first time this script was run, you'll need to reboot"
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
