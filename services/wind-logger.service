@@ -1,12 +1,13 @@
 [Unit]
-Description=Start barometer logger
-After=network.target
-Wants=network.target
+Description=Anemometer Logger
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 WorkingDirectory=/home/pi/parosReader/src/voltage_anemometer
 ExecStart=/home/pi/parosReader/run/wind.sh
 Restart=always
+RestartSec=10
 User=pi
 
 [Install]

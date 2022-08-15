@@ -1,12 +1,13 @@
 [Unit]
-Description=Start barometer logger
-After=network.target
-Wants=network.target
+Description=Barometer Logger
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 WorkingDirectory=/home/pi/parosReader/src/dqLogger
 ExecStart=/home/pi/parosReader/run/baro.sh
 Restart=always
+RestartSec=10
 User=pi
 
 [Install]
