@@ -24,7 +24,6 @@ import os
 import argparse
 import datetime
 from datetime import datetime
-import numpy as np
 import pika
 import socket
 import json
