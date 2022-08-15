@@ -22,9 +22,7 @@ import sys
 import glob
 import os
 import argparse
-import datetime
 from datetime import datetime
-import numpy as np
 import pika
 import socket
 import json
@@ -457,6 +455,8 @@ def main():
                     strIn = binIn.decode()
                     in_parts = strIn.split(",")
 
+                    sys_timestamp = datetime.utcnow().strftime("%m/%d/%y %H:%M:%S.%f")
+
                     try:
                         cur_timestamp = in_parts[1].rstrip()
                         cur_value = in_parts[2].rstrip()
@@ -465,20 +465,24 @@ def main():
                         cur_value = strIn
                     
                     # log actual data
-                    logLine = dqSN + "," + strIn[7:-2]
+                    logLine = dqSN + "," + sys_timestamp + "," + strIn[7:-2]
                     print(logLine)
                     logFile.write(logLine + "\n")
 
                     # send to rabbitmq, if set
                     if args.hostname != "":
-                        mq_msg_json = {
-                            "module_id": cur_hostname,
-                            "sensor_id": dqSN,
-                            "timestamp": cur_timestamp,
-                            "value": cur_value
-                        }
+                        try:
+                            mq_msg_json = {
+                                "module_id": cur_hostname,
+                                "sensor_id": dqSN,
+                                "timestamp": sys_timestamp,
+                                "dev_timestamp": cur_timestamp,
+                                "value": cur_value
+                            }
 
-                        channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
+                            channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
+                        except:
+                            print("Unable to reach rabbitmq server, skipping...")
 
            
 
