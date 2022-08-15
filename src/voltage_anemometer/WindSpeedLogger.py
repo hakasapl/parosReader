@@ -38,6 +38,7 @@ parser.add_argument("-d", "--logDir",
 parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
 parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
 parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
+parser.add_argument("-q", "--queue", help="Rabbitmq queue to submit to", type=str, default="parosLogger")
 
 #
 # parse user input
@@ -55,7 +56,7 @@ if args.hostname != "":
     connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
     channel = connection.channel()
 
-    channel.queue_declare(queue='parosLogger')
+    channel.queue_declare(queue=args.queue)
 
 #while True:
 # initialize current hour to a negative number to force a new log file with first sample
@@ -85,13 +86,14 @@ try:
             print('logFile path {0}'.format(logFilePath))
             print("  opening log file: " + logFilePath + "\n")
             logFile = open(logFilePath, "w")
-            print(type(logFile))
         # Read the last ADC conversion value and print it out.
         value = adc.get_last_result()
         voltage = value*0.0001250038148/GAIN
+        voltage = round(voltage, 10)
         speed = voltage*20.25-8.1-.06
-        cur_timestamp = '{0:%Y-%m-%dT%H:%M:%SZ}'.format(datetime.utcnow())
-        datastring = '{0:%Y-%m-%dT%H:%M:%SZ} {1:.5f}vdc {2:.1f}m/s\n'.format(datetime.utcnow() , voltage, speed)
+        speed = round(speed, 10)
+        cur_timestamp = '{0:%Y/%m/%d %H:%M:%S.000}'.format(datetime.utcnow())
+
         if verbose:
             print('{0:.5f}vdc {1:.1f}m/s'.format(voltage, speed))
         
@@ -99,14 +101,16 @@ try:
         if args.hostname != "":
             mq_msg_json = {
                 "device_id": cur_hostname,
-                "sensor_id": "animometer",
+                "sensor_id": "anemometer",
                 "timestamp": cur_timestamp,
                 "voltage": voltage,
                 "value": speed
             }
             
-            channel.basic_publish(exchange='', routing_key='parosLogger', body=json.dumps(mq_msg_json))
+            channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
 
+        datastring = cur_timestamp + "," + str(voltage) + "," + str(speed)
+        print(datastring)
         logFile.write(datastring)
         #logFile.write("test")
         # Sleep for half a second.
