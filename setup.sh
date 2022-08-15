@@ -81,6 +81,8 @@ grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo '
 grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
 grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
+systemctl restart ntp
+
 echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
 num_baro=${num_baro:-2}
