@@ -118,6 +118,7 @@ def main():
     parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
     parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
     parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-q", "--queue", help="Queue to submit to rabbitmq", type=str, default="parosLogger")
 
     #
     # parse user input
@@ -396,6 +397,14 @@ def main():
 
     print("\nRunning...quit with ctrl-C...\n")
 
+    # open rabbitmq connection
+    if args.hostname != "":
+        credentials = pika.PlainCredentials(args.username, args.password)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
+        channel = connection.channel()
+
+        channel.queue_declare(queue=args.queue)
+
     try:
     
         while True:
@@ -431,14 +440,6 @@ def main():
             # readline method - note also that a barometer is considered failed and
             # is ignored after 3 consecutive timeouts
             #
-
-            # open rabbitmq
-            if args.hostname != "":
-                credentials = pika.PlainCredentials(args.username, args.password)
-                connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
-                channel = connection.channel()
-
-                channel.queue_declare(queue='parosLogger')
             
             for dqIndex, dqSN, dqDevice, dqFailures in zip(range(len(dqPortList)), dqSerialNumberList, dqDeviceList, dqFailuresList):
                 if dqFailures < 3:
@@ -463,37 +464,22 @@ def main():
                         cur_timestamp = "ERROR"
                         cur_value = strIn
                     
-                    if testmodeFlag:
-                        print("  " + dqSN + ", " + strIn)
-                    else:
-                        # log actual data
-                        logLine = dqSN + ", " + strIn[7:-2]
-                        logFile.write(logLine + "\n")
+                    # log actual data
+                    logLine = dqSN + "," + strIn[7:-2]
+                    logFile.write(logLine + "\n")
 
-                        # send to rabbitmq, if set
-                        if args.hostname != "":
-                            mq_msg_json = {
-                                "device_id": cur_hostname,
-                                "sensor_id": dqSN,
-                                "timestamp": cur_timestamp,
-                                "value": cur_value
-                            }
-                            
-                            channel.basic_publish(exchange='', routing_key='parosLogger', body=json.dumps(mq_msg_json))
+                    # send to rabbitmq, if set
+                    if args.hostname != "":
+                        mq_msg_json = {
+                            "module_id": cur_hostname,
+                            "sensor_id": dqSN,
+                            "timestamp": cur_timestamp,
+                            "value": cur_value
+                        }
 
-            # close rabbitmq connection
-            if args.hostname != "":
-                connection.close()
+                        channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
 
-            #
-            # handle barometer failures
-            #
-
-            numFailed = np.sum(i >= 3 for i in dqFailuresList)
-            if numFailed == numBarometers:
-                dateStr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-                print("  ALL BAROMETERS APPEAR TO HAVE FAILED AT: " + dateStr)
-                raise(SystemExit)
+           
 
     except (KeyboardInterrupt, SystemExit):
     
@@ -502,6 +488,10 @@ def main():
     finally:
         
         print("Quitting...\n")
+
+         # close rabbitmq connection
+        if args.hostname != "":
+            connection.close()
         
         for dqPort in dqPortList:
             # send a command to stop P4 continuous sampling - any command will do
