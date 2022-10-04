@@ -22,9 +22,10 @@ import sys
 import glob
 import os
 import argparse
-import datetime
 from datetime import datetime
-import numpy as np
+import pika
+import socket
+import json
 
 #
 # class to read a line of data - this class is claimed to be more efficient than
@@ -111,6 +112,11 @@ def main():
                         action="store",
                         default="./",
                         help="top level directory for log files, use \"\" around names with white space (default = ./)")
+    parser.add_argument("-n", "--numsensors", help="Number of barometers", type=int, default=2)
+    parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
+    parser.add_argument("-q", "--queue", help="Queue to submit to rabbitmq", type=str, default="parosLogger")
 
     #
     # parse user input
@@ -142,6 +148,11 @@ def main():
         exit()
 
     print("  log file directory = " + logDir)
+
+    #
+    # get system info
+    #
+    cur_hostname = socket.gethostname()
 
     #
     # get list of usbserial ports, quit if none found
@@ -180,7 +191,7 @@ def main():
     
     while True:
     
-        print("\nLooking for 4 barometers (no more, no less)...\n")
+        print("\nLooking for barometers...\n")
 
         dqPortList = []
         dqSerialNumberList = []
@@ -222,10 +233,11 @@ def main():
         if dqPortList:
             numBarometers = len(dqPortList)
             print("\n  " + str(numBarometers) + " barometer(s) found")
-            if numBarometers == 4:
+            if numBarometers == args.numsensors:
                 break
             else: 
                print("not enough barometers found! trying again\n:")
+               time.sleep(5)
         else:
             print("\n  no 6000-16B-IS barometer(s) found! trying again\n")
  
@@ -383,6 +395,14 @@ def main():
 
     print("\nRunning...quit with ctrl-C...\n")
 
+    # open rabbitmq connection
+    if args.hostname != "":
+        credentials = pika.PlainCredentials(args.username, args.password)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
+        channel = connection.channel()
+
+        channel.queue_declare(queue=args.queue)
+
     try:
     
         while True:
@@ -433,20 +453,38 @@ def main():
                     dqFailures = 0
                     dqFailuresList[dqIndex] = dqFailures
                     strIn = binIn.decode()
-                    if testmodeFlag:
-                        print("  " + dqSN + ", " + strIn)
-                    else:
-                        logFile.write(dqSN + ", " + strIn[7:-2] + "\n")
+                    in_parts = strIn.split(",")
 
-            #
-            # handle barometer failures
-            #
+                    sys_timestamp = datetime.utcnow().strftime("%m/%d/%y %H:%M:%S.%f")
 
-            numFailed = np.sum(i >= 3 for i in dqFailuresList)
-            if numFailed == numBarometers:
-                dateStr = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
-                print("  ALL BAROMETERS APPEAR TO HAVE FAILED AT: " + dateStr)
-                raise(SystemExit)
+                    try:
+                        cur_timestamp = in_parts[1].rstrip()
+                        cur_value = in_parts[2].rstrip()
+                    except:
+                        cur_timestamp = "ERROR"
+                        cur_value = strIn
+                    
+                    # log actual data
+                    logLine = dqSN + "," + sys_timestamp + "," + strIn[7:-2]
+                    print(logLine)
+                    logFile.write(logLine + "\n")
+
+                    # send to rabbitmq, if set
+                    if args.hostname != "":
+                        try:
+                            mq_msg_json = {
+                                "module_id": cur_hostname,
+                                "sensor_id": dqSN,
+                                "timestamp": sys_timestamp,
+                                "dev_timestamp": cur_timestamp,
+                                "value": cur_value
+                            }
+
+                            channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
+                        except:
+                            print("Unable to reach rabbitmq server, skipping...")
+
+           
 
     except (KeyboardInterrupt, SystemExit):
     
@@ -455,6 +493,10 @@ def main():
     finally:
         
         print("Quitting...\n")
+
+         # close rabbitmq connection
+        if args.hostname != "":
+            connection.close()
         
         for dqPort in dqPortList:
             # send a command to stop P4 continuous sampling - any command will do

@@ -5,27 +5,20 @@ Repository for the CASA Infrasound Lab
 * git
 
 ```
-apt-get update
-apt-get install git
+apt update
+apt install git
 ```
 
 # Installing the Code
 You can installl the scripts with:
 ```
+cd ~
 git clone https://github.com/UmassCASA/parosReader.git
-cd parosreader/src
-chmod +x run.sh
+cd parosReader
+chmod +x setup.sh
+sudo ./setup.sh
 ```
 
 # Running the Program
-We like to run with nohup just in case:
-```
- nohup ./run.sh 
-```
-
-Also maybe delete the old nohup.out file first (no worries, it will append to the end if you don't).
-
-# Autorun on reboot
-In the src directory there is a crontab.txt file that is installed on the pi to automatically restart the
-barometer data logger and anemomemter data logger when it boots up.
-
+Baro logger is enabled by default as a systemd service. Check on its status with `systemctl status baro-logger`  
+Wind logger is enabled by default as a systemd service. Check on its status with `systemctl status wind-logger`
