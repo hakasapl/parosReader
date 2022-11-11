@@ -37,6 +37,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+#! TODO enable SPI bus
+
 # installing apt prerequisites
 echoGreen "Installing APT Prerequisites...\n"
 apt-get update
@@ -97,7 +99,7 @@ wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
 baro_cmd="python3 ${git_location}/src/dqLogger/dqLogger.py -d ${baro_log_loc} -n ${num_baro}"
-wind_cmd="python3 ${git_location}/src/voltage_anemometer/WindSpeedLogger.py -d ${wind_log_loc}"
+wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
 # password prompt function
 getRmqPass() {
