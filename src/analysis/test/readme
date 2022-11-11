@@ -1,3 +1,0 @@
-# Test Files #
-
-The python file `gen_data.py` is used to generate old data in the same interval as a live test would, such that we can test our parosReader code without actually running an experiment on a raspberry PI.
