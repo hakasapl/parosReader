@@ -8,3 +8,5 @@
 /src/voltage_anemometer/WXLOG-*/
 /src/nohup.out
 /src/nohup.out.ioerror
+
+**__pycache__
