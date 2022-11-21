@@ -27,6 +27,8 @@ import pika
 import socket
 import json
 
+modelList = [ "6000-16B-IS", "6000-16B" ]
+
 #
 # class to read a line of data - this class is claimed to be more efficient than
 # the pyserial readline - obtains higher throughput and works better with Raspberry
@@ -210,16 +212,9 @@ def main():
 
             waitFlag = 0  # no response within timeout --> no barometer
 
-            dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
-            if "6000-16B-IS" in dqModelNumber:
-                tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
-                dqSerialNumber = tempStr[3:]
-                print("    found serial number:\tSN=" + dqSerialNumber)
-                dqPortList.append(dqPort)
-                dqSerialNumberList.append(dqSerialNumber)
-            else: 
-                # try twice
-                print("try again! got this: " + dqModelNumber)
+            numModelTries = 2
+
+            for i in range(numModelTries):
                 dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
                 if "6000-16B-IS" in dqModelNumber:
                     tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
@@ -227,8 +222,9 @@ def main():
                     print("    found serial number:\tSN=" + dqSerialNumber)
                     dqPortList.append(dqPort)
                     dqSerialNumberList.append(dqSerialNumber)
-                else:
-                    dqPort.close()
+                    break
+            else:
+                dqPort.close()
 
         if dqPortList:
             numBarometers = len(dqPortList)
