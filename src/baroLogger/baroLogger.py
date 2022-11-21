@@ -414,15 +414,9 @@ def main():
                     currentUTCHour = datetime.utcnow().hour
                     if logFile is not None:
                         logFile.close()
-                    logDirectoryName = os.path.join(logDir,
-                                                    "DQLOG-{0:%Y%m%d}-{1:02d}-{2:02d}".format(datetime.utcnow(),
-                                                                                              dqSampleRate,
-                                                                                              IA))
+                    logDirectoryName = os.path.join(logDir, "BAROLOG-{0:%Y-%m-%d}".format(datetime.utcnow()))
                     os.makedirs(logDirectoryName, exist_ok=True)
-                    logFileName = "DQ-{0:%Y%m%d-%H%M%S}-{1:02d}-{2:02d}-{3:01d}.txt".format(datetime.utcnow(),
-                                                                                            dqSampleRate,
-                                                                                            IA,
-                                                                                            numBarometers)
+                    logFileName = "baro_{0:%Y-%m-%d-%H}.txt".format(datetime.utcnow())
                     logFilePath = os.path.join(logDirectoryName, logFileName)
                     logFile = open(logFilePath,'w+')
                     print("  opening log file: " + logFilePath + "\n")
@@ -461,8 +455,7 @@ def main():
                         cur_value = strIn
                     
                     # log actual data
-                    logLine = dqSN + "," + sys_timestamp + "," + strIn[7:-2]
-                    print(logLine)
+                    logLine = cur_hostname + "," + dqSN + "," + sys_timestamp + "," + cur_timestamp + "," + cur_value
                     logFile.write(logLine + "\n")
 
                     # send to rabbitmq, if set
