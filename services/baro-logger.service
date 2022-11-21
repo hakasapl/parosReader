@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-WorkingDirectory=/home/pi/parosReader/src/dqLogger
+WorkingDirectory=/home/pi/parosReader/src/baroLogger
 ExecStart=/home/pi/parosReader/run/baro.sh
 Restart=always
 RestartSec=10
