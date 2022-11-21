@@ -108,7 +108,6 @@ def main():
             # Send to rabbitmq
             #
 
-            #! TODO, does this take too long?
             if args.hostname != "":
                 mq_msg_json = {
                     "module_id": cur_hostname,
