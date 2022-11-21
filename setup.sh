@@ -57,33 +57,37 @@ if [ $? -ne 0 ]; then
 fi
 
 # setup GPS
-echoGreen "Setting up GPS...\n"
-grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
+echoYellow "Does this box have a GPS (y/n)? "
+read gps_enable
+if [ "$gps_enable" == "y" ]; then
+    echoGreen "Setting up GPS...\n"
+    grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
 
-systemctl enable gpsd.socket
-systemctl start gpsd.socket
-systemctl enable gpsd
-systemctl start gpsd
+    systemctl enable gpsd.socket
+    systemctl start gpsd.socket
+    systemctl enable gpsd
+    systemctl start gpsd
 
-grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-systemctl restart ntp
+    systemctl restart ntp
+fi
 
 echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
@@ -185,12 +189,13 @@ if [ "$ngrok_enable" = "y" ]; then
     echoYellow "Enter ngrok authentication token: "
     read ngrok_token
 
-    rm -rf /home/pi/.config/ngrok
-    su -c '$git_location/bin/ngrok add-authtoken $ngrok_token' pi
+    mkdir -p /home/pi/.config/ngrok
+    echo 'version: "2"' > /home/pi/.config/ngrok/ngrok.yml
+    echo "authtoken: $ngrok_token" >> /home/pi/.config/ngrok/ngrok.yml
     cp $git_location/services/ngrok.service /etc/systemd/system/ngrok.service
     systemctl daemon-reload
     systemctl enable ngrok
-    systemctl start ngrok
+    systemctl restart ngrok
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
