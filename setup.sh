@@ -30,10 +30,10 @@ git_location="/home/pi/parosReader"
 chown pi:pi -R $git_location
 
 # enable i2c bus on taspberry pi
-echoGreen "Enabling I2C Bus...\n"
-raspi-config nonint do_i2c 0
+echoGreen "Enabling SPI Bus...\n"
+raspi-config nonint do_spi 0
 if [ $? -ne 0 ]; then
-    echoRed "Unable to enable I2C bus\n"
+    echoRed "Unable to enable SPI bus\n"
     exit 1
 fi
 
@@ -89,16 +89,16 @@ echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
 num_baro=${num_baro:-2}
 
-echoYellow "Where should we output barometer logs (def: /opt/DQLOG)? "
+echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
 read baro_log_loc
-baro_log_loc=${baro_log_loc:-/opt/DQLOG}
+baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
 
 echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
 read baro_wind_loc
 wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
-baro_cmd="python3 ${git_location}/src/dqLogger/dqLogger.py -d ${baro_log_loc} -n ${num_baro}"
+baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
 wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
 # password prompt function
@@ -177,6 +177,20 @@ if [ "$start_logger" = "y" ]; then
 else
     systemctl stop baro-logger
     systemctl stop wind-logger
+fi
+
+echoYellow "Should this box forward SSH to ngrok (y/n)? "
+read ngrok_enable
+if [ "$ngrok_enable" = "y" ]; then
+    echoYellow "Enter ngrok authentication token: "
+    read ngrok_token
+
+    rm -rf /home/pi/.config/ngrok
+    su -c '$git_location/bin/ngrok add-authtoken $ngrok_token' pi
+    cp $git_location/services/ngrok.service /etc/systemd/system/ngrok.service
+    systemctl daemon-reload
+    systemctl enable ngrok
+    systemctl start ngrok
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
