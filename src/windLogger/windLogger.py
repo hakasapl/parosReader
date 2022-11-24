@@ -102,7 +102,7 @@ def main():
             if wind_speed < 0:
                 wind_speed = 0
 
-            cur_timestamp = "{0:%m/%d/%y %H:%M:%S.%f}".format(lastTimestamp)
+            cur_timestamp = lastTimestamp.isoformat() + "Z"
             
             #
             # Send to rabbitmq

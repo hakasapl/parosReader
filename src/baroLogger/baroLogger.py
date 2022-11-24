@@ -445,10 +445,10 @@ def main():
                     strIn = binIn.decode()
                     in_parts = strIn.split(",")
 
-                    sys_timestamp = datetime.utcnow().strftime("%m/%d/%y %H:%M:%S.%f")
+                    sys_timestamp = datetime.utcnow().isoformat() + "Z"
 
                     try:
-                        cur_timestamp = in_parts[1].rstrip()
+                        cur_timestamp = datetime.strptime(in_parts[1].rstrip(), "%m/%d/%y %H:%M:%S.%f").isoformat() + "Z"
                         cur_value = in_parts[2].rstrip()
                     except:
                         cur_timestamp = "ERROR"
