@@ -405,9 +405,9 @@ def main():
                     currentUTCHour = datetime.utcnow().hour
                     if logFile is not None:
                         logFile.close()
-                    logDirectoryName = os.path.join(logDir, "BAROLOG-{0:%Y%m%d}".format(datetime.utcnow()))
+                    logDirectoryName = os.path.join(logDir, "BAROLOG_{0:%Y%m%d}".format(datetime.utcnow()))
                     os.makedirs(logDirectoryName, exist_ok=True)
-                    logFileName = "baro_{0:%Y-%m-%d-%H}.txt".format(datetime.utcnow())
+                    logFileName = "BAROLOG_{0:%Y%m%d-%H}.txt".format(datetime.utcnow())
                     logFilePath = os.path.join(logDirectoryName, logFileName)
                     logFile = open(logFilePath,'a')
                     print("  opening log file: " + logFilePath + "\n")

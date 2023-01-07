@@ -59,7 +59,7 @@ def main():
     try:
         logFile = None
 
-        logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
+        logDirectoryName = os.path.join(args.logDir, "WINDLOG_{0:%Y%m%d}".format(datetime.utcnow()))
         if not os.path.exists(logDirectoryName):
             os.makedirs(logDirectoryName)
         
@@ -76,7 +76,7 @@ def main():
                 continue
 
             if newTimestamp.date() != lastTimestamp.date():
-                logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
+                logDirectoryName = os.path.join(args.logDir, "WINDLOG_{0:%Y%m%d}".format(datetime.utcnow()))
                 if not os.path.exists(logDirectoryName):
                     os.makedirs(logDirectoryName)
 
@@ -96,7 +96,7 @@ def main():
             #
             # Send to log file
             #
-            logFilePath = os.path.join(logDirectoryName, "WIND_{0:%Y%m%d-%H}.txt".format(lastTimestamp))
+            logFilePath = os.path.join(logDirectoryName, "WINDLOG_{0:%Y%m%d-%H}.txt".format(lastTimestamp))
 
             logFile = open(logFilePath, "a")
 
