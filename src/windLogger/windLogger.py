@@ -1,6 +1,5 @@
 import os
 import argparse
-import pika
 import json
 import socket
 
@@ -22,7 +21,7 @@ MAX_V = 2.0  # Max voltage of anemometer output
 REF = 5.08  # ADC reference voltage
 
 ADC_INPUT = 0  # ADC input channel
-FS = 1  # ADC sampling rate
+FS = 20  # ADC sampling rate
 
 #
 # Main method
@@ -34,10 +33,6 @@ def main():
                         action="store",
                         default="./",
                         help="top level directory for log files, use \"\" around names with white space (default = ./)")
-    parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-q", "--queue", help="Rabbitmq queue to submit to", type=str, default="parosLogger")
 
     #
     # parse user input
@@ -61,17 +56,6 @@ def main():
     #
     cur_hostname = socket.gethostname()
 
-    if args.hostname != "":
-        try:
-            credentials = pika.PlainCredentials(args.username, args.password)
-            connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
-            channel = connection.channel()
-
-            channel.queue_declare(queue=args.queue)
-        except:
-            print("Warning: Unable to initialize rabbitmq queue")
-            args.hostname = ""
-
     try:
         logFile = None
 
@@ -91,6 +75,11 @@ def main():
             if datetime.utcnow() < newTimestamp:
                 continue
 
+            if newTimestamp.date() != lastTimestamp.date():
+                logDirectoryName = os.path.join(args.logDir, "WXLOG-{0:%Y%m%d}".format(datetime.utcnow()))
+                if not os.path.exists(logDirectoryName):
+                    os.makedirs(logDirectoryName)
+
             lastTimestamp = newTimestamp
 
             ADC_value = ADC.ADS1263_GetChannalValue(ADC_INPUT)
@@ -103,25 +92,6 @@ def main():
                 wind_speed = 0
 
             cur_timestamp = lastTimestamp.isoformat() + "Z"
-            
-            #
-            # Send to rabbitmq
-            #
-
-            if args.hostname != "":
-                mq_msg_json = {
-                    "module_id": cur_hostname,
-                    "sensor_id": "anemometer",
-                    "timestamp": cur_timestamp,
-                    "raw_adc": ADC_value,
-                    "voltage": ADC_voltage,
-                    "value": wind_speed
-                }
-                
-                try:
-                    channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
-                except:
-                    print("Warning: Unable to send data to rabbitmq server")
 
             #
             # Send to log file

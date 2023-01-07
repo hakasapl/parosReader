@@ -23,7 +23,6 @@ import glob
 import os
 import argparse
 from datetime import datetime
-import pika
 import socket
 import json
 
@@ -115,10 +114,6 @@ def main():
                         default="./",
                         help="top level directory for log files, use \"\" around names with white space (default = ./)")
     parser.add_argument("-n", "--numsensors", help="Number of barometers", type=int, default=2)
-    parser.add_argument("-i", "--hostname", help="Address of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-u", "--username", help="Username of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-p", "--password", help="Password of remote rabbitmq server", type=str, default="")
-    parser.add_argument("-q", "--queue", help="Queue to submit to rabbitmq", type=str, default="parosLogger")
 
     #
     # parse user input
@@ -391,14 +386,6 @@ def main():
 
     print("\nRunning...quit with ctrl-C...\n")
 
-    # open rabbitmq connection
-    if args.hostname != "":
-        credentials = pika.PlainCredentials(args.username, args.password)
-        connection = pika.BlockingConnection(pika.ConnectionParameters(args.hostname, credentials=credentials))
-        channel = connection.channel()
-
-        channel.queue_declare(queue=args.queue)
-
     try:
     
         while True:
@@ -457,23 +444,6 @@ def main():
                     # log actual data
                     logLine = cur_hostname + "," + dqSN + "," + sys_timestamp + "," + cur_timestamp + "," + cur_value
                     logFile.write(logLine + "\n")
-
-                    # send to rabbitmq, if set
-                    if args.hostname != "":
-                        try:
-                            mq_msg_json = {
-                                "module_id": cur_hostname,
-                                "sensor_id": dqSN,
-                                "timestamp": sys_timestamp,
-                                "dev_timestamp": cur_timestamp,
-                                "value": cur_value
-                            }
-
-                            channel.basic_publish(exchange='', routing_key=args.queue, body=json.dumps(mq_msg_json))
-                        except:
-                            print("Unable to reach rabbitmq server, skipping...")
-
-           
 
     except (KeyboardInterrupt, SystemExit):
     
