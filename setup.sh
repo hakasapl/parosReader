@@ -29,15 +29,13 @@ fi
 git_location="/home/pi/parosReader"
 chown pi:pi -R $git_location
 
-# enable i2c bus on taspberry pi
+# enable SPI bus on taspberry pi
 echoGreen "Enabling SPI Bus...\n"
 raspi-config nonint do_spi 0
 if [ $? -ne 0 ]; then
     echoRed "Unable to enable SPI bus\n"
     exit 1
 fi
-
-#! TODO enable SPI bus
 
 # installing apt prerequisites
 echoGreen "Installing APT Prerequisites...\n"
@@ -56,7 +54,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# setup GPS
+# setup GPS NTP source
 echoYellow "Does this box have a GPS (y/n)? "
 read gps_enable
 if [ "$gps_enable" == "y" ]; then
@@ -102,7 +100,6 @@ read baro_wind_loc
 wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
-datasender_cmd="python3 ${git_location}/src/dataSender/dataSender.py"
 baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
 wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
@@ -110,6 +107,8 @@ wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc
 echoYellow "Should data be uploaded to influxdb (y/n)? "
 read influxdb
 if [ "$influxdb" = "y" ]; then
+    datasender_cmd="python3 ${git_location}/src/dataSender/dataSender.py"
+
     echoYellow "[INFLUXDB] What is the hostname? "
     read influxdb_hostname
 
@@ -151,6 +150,8 @@ echoGreen "Deploying systemd service files...\n"
 cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
 cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
 systemctl daemon-reload
+systemctl enable baro-logger
+systemctl enable wind-logger
 
 # creating logging directories
 echoGreen "Creating barometer log directory...\n"
@@ -161,27 +162,7 @@ echoGreen "Creating wind speed log directory...\n"
 mkdir -p $wind_log_loc
 chown pi:pi $wind_log_loc
 
-echoYellow "Should logging be autostarted on boot (y/n)? "
-read enable_logger
-if [ "$enable_logger" = "y" ]; then
-    systemctl enable baro-logger
-    systemctl enable wind-logger
-else
-    systemctl disable baro-logger
-    systemctl disable wind-logger
-fi
-
-echoYellow "Should we start logging now (y/n)? "
-read start_logger
-if [ "$start_logger" = "y" ]; then
-    systemctl start baro-logger
-    systemctl start wind-logger
-else
-    systemctl stop baro-logger
-    systemctl stop wind-logger
-fi
-
-echoYellow "Should this box forward SSH to ngrok (y/n)? "
+echoYellow "Should this box forward SSH to NGROK (y/n)? "
 read ngrok_enable
 if [ "$ngrok_enable" = "y" ]; then
     echoYellow "Enter ngrok authentication token: "
