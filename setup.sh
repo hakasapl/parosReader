@@ -102,50 +102,48 @@ read baro_wind_loc
 wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
+datasender_cmd="python3 ${git_location}/src/dataSender/dataSender.py"
 baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
 wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
-# password prompt function
-getRmqPass() {
-    echoYellow "What is the password of the remote rabbitmq server? "
-    read -s rmq_pass
-    echo ""
+# check if influxdb posting is required
+echoYellow "Should data be uploaded to influxdb (y/n)? "
+read influxdb
+if [ "$influxdb" = "y" ]; then
+    echoYellow "[INFLUXDB] What is the hostname? "
+    read influxdb_hostname
 
-    echoYellow "Confirm the password of the remote rabbitmq server: "
-    read -s rmq_pass_confirm
-    echo ""
+    echoYellow "[INFLUXDB] What is the organization? "
+    read influxdb_org
 
-    if [ "$rmq_pass" != "$rmq_pass_confirm" ]; then
-        echoRed "Passwords do not match, try again\n"
-        getRmqPass
-    fi
-}
+    echoYellow "[INFLUXDB] What is the bucket? "
+    read influxdb_bucket
 
-# check if rmq posting is required
-echoYellow "Should we send to rabbitmq in addition to local logging (y/n)? "
-read rmq
-mq_cmd=""
-if [ "$rmq" = "y" ]; then
-    echoYellow "What is the hostname of the remote rabbitmq server? "
-    read rmq_host
+    echoYellow "[INFLUXDB] What is the API token? "
+    read influxdb_token
 
-    echoYellow "What is the username of the remote rabbitmq server? "
-    read rmq_user
+    influxdb_cmd="${influxdb_url} ${influxdb_org} ${influxdb_token} ${influxdb_bucket} -l ${baro_log_loc} -l ${wind_log_loc}"
 
-    getRmqPass
+    echoGreen "[INFLUXDB] Creating run files for influxdb dataSender...\n"
+    echo "#!/bin/bash" > $git_location/run/datasender.sh
+    echo "${datasender_cmd} ${influxdb_cmd}" >> $git_location/run/datasender.sh
+    chmod +x $git_location/run/datasender.sh
 
-    mq_cmd=" -i ${rmq_host} -u ${rmq_user} -p ${rmq_pass}"
+    echoGreen "[INFLUXDB] Deploying systemd service files...\n"
+    cp $git_location/services/datasender* /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable datasender.timer
 fi
 
 # create run files
 echoGreen "Creating run files for barometer logging...\n"
 echo "#!/bin/bash" > $git_location/run/baro.sh
-echo "${baro_cmd}${mq_cmd}" >> $git_location/run/baro.sh
+echo "${baro_cmd}" >> $git_location/run/baro.sh
 chmod +x $git_location/run/baro.sh
 
 echoGreen "Creating run files for wind speed logging...\n"
 echo "#!/bin/bash" > $git_location/run/wind.sh
-echo "${wind_cmd}${mq_cmd}" >> $git_location/run/wind.sh
+echo "${wind_cmd}" >> $git_location/run/wind.sh
 chmod +x $git_location/run/wind.sh
 
 # deploy service files
