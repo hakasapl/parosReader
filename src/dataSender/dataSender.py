@@ -16,13 +16,6 @@ def main():
     parser.add_argument("-t", "--time", help="Send specific csv")
     args = parser.parse_args()
 
-    # define influxdb params
-    bucket = "paros-datastream"
-    org = "paros"
-    token = "0ezvek442zpRbMEG_4sJ4m-2Ld8Yfwyidpa76OjC5p8HBWqigNWJoiVYQUOitqI0vCvm4VBat4O36UbogZ5RDg=="
-    url = "https://influxdb.paros.casa.umass.edu/"
-    logdirs = ["/opt/BAROLOG", "/opt/WINDLOG"]
-
     # create influxdb objects
     client = influxdb_client.InfluxDBClient(url=args.url, token=args.token, org=args.org)
     write_api = client.write_api(write_options=SYNCHRONOUS)
