@@ -212,8 +212,12 @@ def main():
             for i in range(numModelTries):
                 dqModelNumber = sendCommand('*0100MN', dqPort, waitFlag, verbosemodeFlag)
                 if "6000-16B-IS" in dqModelNumber:
-                    tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
-                    dqSerialNumber = tempStr[3:]
+                    # workaround for a bug where sometimes the model number returns instead of the serial number
+                    dqSerialNumber = "BLANK"
+                    while not dqSerialNumber.isnumeric():
+                        tempStr = sendCommand('*0100SN', dqPort, waitFlag, verbosemodeFlag)
+                        dqSerialNumber = tempStr[3:]
+                    
                     print("    found serial number:\tSN=" + dqSerialNumber)
                     dqPortList.append(dqPort)
                     dqSerialNumberList.append(dqSerialNumber)
@@ -401,11 +405,11 @@ def main():
                     currentUTCHour = datetime.utcnow().hour
                     if logFile is not None:
                         logFile.close()
-                    logDirectoryName = os.path.join(logDir, "BAROLOG-{0:%Y-%m-%d}".format(datetime.utcnow()))
+                    logDirectoryName = os.path.join(logDir, "BAROLOG-{0:%Y%m%d}".format(datetime.utcnow()))
                     os.makedirs(logDirectoryName, exist_ok=True)
                     logFileName = "baro_{0:%Y-%m-%d-%H}.txt".format(datetime.utcnow())
                     logFilePath = os.path.join(logDirectoryName, logFileName)
-                    logFile = open(logFilePath,'w+')
+                    logFile = open(logFilePath,'a')
                     print("  opening log file: " + logFilePath + "\n")
 
             #
