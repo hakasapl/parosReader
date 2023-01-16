@@ -38,21 +38,30 @@ if [ $? -ne 0 ]; then
 fi
 
 # installing apt prerequisites
-echoGreen "Installing APT Prerequisites...\n"
-apt-get update
-apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
-if [ $? -ne 0 ]; then
-    echoRed "Error installing apt packages\n"
-    exit 1
+if [[ "$*" == *"--skip-apt"* ]]; then
+    echoGreen "Skipping installing APT prerequisites\n"
+else
+    echoGreen "Installing APT Prerequisites...\n"
+    apt-get update
+    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
+    if [ $? -ne 0 ]; then
+        echoRed "Error installing apt packages\n"
+        exit 1
+    fi
 fi
 
 # installing pypi prerequisites
-echoGreen "Installing Python Packages...\n"
-pip install pika Adafruit-ADS1x15 pySerial
-if [ $? -ne 0 ]; then
-    echoRed "Error installing PyPI packages\n"
-    exit 1
+if [[ "$*" == *"--skip-pip"* ]]; then
+    echoGreen "Skipping installing Python packages\n"
+else
+    echoGreen "Installing Python Packages...\n"
+    pip install pika Adafruit-ADS1x15 pySerial
+    if [ $? -ne 0 ]; then
+        echoRed "Error installing PyPI packages\n"
+        exit 1
+    fi
 fi
+
 
 # setup GPS NTP source
 echoYellow "Does this box have a GPS (y/n)? "
@@ -121,7 +130,7 @@ if [ "$influxdb" = "y" ]; then
     echoYellow "[INFLUXDB] What is the API token? "
     read influxdb_token
 
-    influxdb_cmd="${influxdb_url} ${influxdb_org} ${influxdb_token} ${influxdb_bucket} -l ${baro_log_loc} -l ${wind_log_loc}"
+    influxdb_cmd="${influxdb_hostname} ${influxdb_org} ${influxdb_token} ${influxdb_bucket} -l ${baro_log_loc} -l ${wind_log_loc}"
 
     echoGreen "[INFLUXDB] Creating run files for influxdb dataSender...\n"
     echo "#!/bin/bash" > $git_location/run/datasender.sh
