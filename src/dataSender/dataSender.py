@@ -31,7 +31,7 @@ def main():
         # custom time requested to be sent
         cur_time = datetime.utcnow()
         # lag csv timestamp by 1 min to catch last data points
-        csv_timestamp = cur_time - timedelta(minutes=1)
+        cur_time -= timedelta(minutes=1)
     else:
         cur_time = datetime.fromisoformat(args.time)
         
