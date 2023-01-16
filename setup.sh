@@ -174,7 +174,7 @@ chown pi:pi $wind_log_loc
 echoYellow "Should this box forward SSH to NGROK (y/n)? "
 read ngrok_enable
 if [ "$ngrok_enable" = "y" ]; then
-    echoYellow "Enter ngrok authentication token: "
+    echoYellow "[ngrok] Enter authentication token: "
     read ngrok_token
 
     mkdir -p /home/pi/.config/ngrok
