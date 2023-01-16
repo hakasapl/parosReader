@@ -3,9 +3,11 @@ Description=Data sender to influxdb
 After=network-online.target
 Wants=network-online.target
 
-[Timer]
+[Service]
 WorkingDirectory=/home/pi/parosReader/src/dataSender
 ExecStart=/home/pi/parosReader/run/datasender.sh
+Restart=on-failure
+RestartSec=60s
 Type=oneshot
 User=pi
 
