@@ -2,10 +2,12 @@ import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 import time
 from datetime import datetime
+from datetime import timedelta
 import os
 import csv
 import argparse
 import pandas as pd
+import socket
 
 def main():
 
@@ -22,15 +24,18 @@ def main():
     # create influxdb objects
     client = influxdb_client.InfluxDBClient(url=args.url, token=args.token, org=args.org)
 
+    dev_hostname = socket.gethostname()
+
     # find csv file to send
     if args.time is None:
         # custom time requested to be sent
         cur_time = datetime.utcnow()
-        # get the previous hour since this would be called at the new hour by cron
-        csv_timestamp = cur_time.replace(hour=cur_time.hour - 1,minute=0,second=0,microsecond=0)
+        # lag csv timestamp by 1 min to catch last data points
+        csv_timestamp = cur_time - timedelta(minutes=1)
     else:
         cur_time = datetime.fromisoformat(args.time)
-        csv_timestamp = cur_time.replace(minute=0,second=0,microsecond=0)
+        
+    csv_timestamp = cur_time.replace(minute=0,second=0,microsecond=0)
 
     for logdir in args.logdir:
         log_prefix = os.path.basename(logdir)
@@ -59,7 +64,7 @@ def main():
                     write_api.write(
                         record=df,
                         bucket=args.bucket,
-                        data_frame_measurement_name="paros1",
+                        data_frame_measurement_name=dev_hostname,
                         data_frame_tag_columns=["sensor_id"],
                         data_frame_timestamp_column="timestamp",
                     )
