@@ -1,5 +1,5 @@
 [Unit]
-Description=Run datasender every hour
+Description=Run datasender every 5 mins
 
 [Timer]
 Persistent=true
