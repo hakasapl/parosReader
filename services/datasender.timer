@@ -1,0 +1,10 @@
+[Unit]
+Description=Run datasender every 5 mins
+
+[Timer]
+Persistent=true
+OnCalendar=*:0/5
+Unit=datasender.service
+
+[Install]
+WantedBy=timer.target

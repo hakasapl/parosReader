@@ -29,117 +29,129 @@ fi
 git_location="/home/pi/parosReader"
 chown pi:pi -R $git_location
 
-# enable i2c bus on taspberry pi
-echoGreen "Enabling I2C Bus...\n"
-raspi-config nonint do_i2c 0
+# enable SPI bus on taspberry pi
+echoGreen "Enabling SPI Bus...\n"
+raspi-config nonint do_spi 0
 if [ $? -ne 0 ]; then
-    echoRed "Unable to enable I2C bus\n"
+    echoRed "Unable to enable SPI bus\n"
     exit 1
 fi
 
 # installing apt prerequisites
-echoGreen "Installing APT Prerequisites...\n"
-apt-get update
-apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
-if [ $? -ne 0 ]; then
-    echoRed "Error installing apt packages\n"
-    exit 1
+if [[ "$*" == *"--skip-apt"* ]]; then
+    echoGreen "Skipping installing APT prerequisites\n"
+else
+    echoGreen "Installing APT Prerequisites...\n"
+    apt-get update
+    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
+    if [ $? -ne 0 ]; then
+        echoRed "Error installing apt packages\n"
+        exit 1
+    fi
 fi
 
 # installing pypi prerequisites
-echoGreen "Installing Python Packages...\n"
-pip install pika Adafruit-ADS1x15 pySerial
-if [ $? -ne 0 ]; then
-    echoRed "Error installing PyPI packages\n"
-    exit 1
+if [[ "$*" == *"--skip-pip"* ]]; then
+    echoGreen "Skipping installing Python packages\n"
+else
+    echoGreen "Installing Python Packages...\n"
+    pip install pika Adafruit-ADS1x15 pySerial
+    if [ $? -ne 0 ]; then
+        echoRed "Error installing PyPI packages\n"
+        exit 1
+    fi
 fi
 
-# setup GPS
-echoGreen "Setting up GPS...\n"
-grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
 
-systemctl enable gpsd.socket
-systemctl start gpsd.socket
-systemctl enable gpsd
-systemctl start gpsd
+# setup GPS NTP source
+echoYellow "Does this box have a GPS (y/n)? "
+read gps_enable
+if [ "$gps_enable" == "y" ]; then
+    echoGreen "Setting up GPS...\n"
+    grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
 
-grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    systemctl enable gpsd.socket
+    systemctl start gpsd.socket
+    systemctl enable gpsd
+    systemctl start gpsd
 
-grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
 
-systemctl restart ntp
+    grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
+    grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+
+    systemctl restart ntp
+fi
 
 echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
 num_baro=${num_baro:-2}
 
-echoYellow "Where should we output barometer logs (def: /opt/DQLOG)? "
+echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
 read baro_log_loc
-baro_log_loc=${baro_log_loc:-/opt/DQLOG}
+baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
 
 echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
 read baro_wind_loc
 wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
 # create cmd strings
-baro_cmd="python3 ${git_location}/src/dqLogger/dqLogger.py -d ${baro_log_loc} -n ${num_baro}"
-wind_cmd="python3 ${git_location}/src/voltage_anemometer/WindSpeedLogger.py -d ${wind_log_loc}"
+baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
+wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
-# password prompt function
-getRmqPass() {
-    echoYellow "What is the password of the remote rabbitmq server? "
-    read -s rmq_pass
-    echo ""
+# check if influxdb posting is required
+echoYellow "Should data be uploaded to influxdb (y/n)? "
+read influxdb
+if [ "$influxdb" = "y" ]; then
+    datasender_cmd="python3 ${git_location}/src/dataSender/dataSender.py"
 
-    echoYellow "Confirm the password of the remote rabbitmq server: "
-    read -s rmq_pass_confirm
-    echo ""
+    echoYellow "[INFLUXDB] What is the hostname? "
+    read influxdb_hostname
 
-    if [ "$rmq_pass" != "$rmq_pass_confirm" ]; then
-        echoRed "Passwords do not match, try again\n"
-        getRmqPass
-    fi
-}
+    echoYellow "[INFLUXDB] What is the organization? "
+    read influxdb_org
 
-# check if rmq posting is required
-echoYellow "Should we send to rabbitmq in addition to local logging (y/n)? "
-read rmq
-mq_cmd=""
-if [ "$rmq" = "y" ]; then
-    echoYellow "What is the hostname of the remote rabbitmq server? "
-    read rmq_host
+    echoYellow "[INFLUXDB] What is the bucket? "
+    read influxdb_bucket
 
-    echoYellow "What is the username of the remote rabbitmq server? "
-    read rmq_user
+    echoYellow "[INFLUXDB] What is the API token? "
+    read influxdb_token
 
-    getRmqPass
+    influxdb_cmd="${influxdb_hostname} ${influxdb_org} ${influxdb_token} ${influxdb_bucket} -l ${baro_log_loc} -l ${wind_log_loc}"
 
-    mq_cmd=" -i ${rmq_host} -u ${rmq_user} -p ${rmq_pass}"
+    echoGreen "[INFLUXDB] Creating run files for influxdb dataSender...\n"
+    echo "#!/bin/bash" > $git_location/run/datasender.sh
+    echo "${datasender_cmd} ${influxdb_cmd}" >> $git_location/run/datasender.sh
+    chmod +x $git_location/run/datasender.sh
+
+    echoGreen "[INFLUXDB] Deploying systemd service files...\n"
+    cp $git_location/services/datasender* /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable datasender.timer
 fi
 
 # create run files
 echoGreen "Creating run files for barometer logging...\n"
 echo "#!/bin/bash" > $git_location/run/baro.sh
-echo "${baro_cmd}${mq_cmd}" >> $git_location/run/baro.sh
+echo "${baro_cmd}" >> $git_location/run/baro.sh
 chmod +x $git_location/run/baro.sh
 
 echoGreen "Creating run files for wind speed logging...\n"
 echo "#!/bin/bash" > $git_location/run/wind.sh
-echo "${wind_cmd}${mq_cmd}" >> $git_location/run/wind.sh
+echo "${wind_cmd}" >> $git_location/run/wind.sh
 chmod +x $git_location/run/wind.sh
 
 # deploy service files
@@ -147,6 +159,8 @@ echoGreen "Deploying systemd service files...\n"
 cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
 cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
 systemctl daemon-reload
+systemctl enable baro-logger
+systemctl enable wind-logger
 
 # creating logging directories
 echoGreen "Creating barometer log directory...\n"
@@ -157,24 +171,19 @@ echoGreen "Creating wind speed log directory...\n"
 mkdir -p $wind_log_loc
 chown pi:pi $wind_log_loc
 
-echoYellow "Should logging be autostarted on boot (y/n)? "
-read enable_logger
-if [ "$enable_logger" = "y" ]; then
-    systemctl enable baro-logger
-    systemctl enable wind-logger
-else
-    systemctl disable baro-logger
-    systemctl disable wind-logger
-fi
+echoYellow "Should this box forward SSH to NGROK (y/n)? "
+read ngrok_enable
+if [ "$ngrok_enable" = "y" ]; then
+    echoYellow "[ngrok] Enter authentication token: "
+    read ngrok_token
 
-echoYellow "Should we start logging now (y/n)? "
-read start_logger
-if [ "$start_logger" = "y" ]; then
-    systemctl start baro-logger
-    systemctl start wind-logger
-else
-    systemctl stop baro-logger
-    systemctl stop wind-logger
+    mkdir -p /home/pi/.config/ngrok
+    echo 'version: "2"' > /home/pi/.config/ngrok/ngrok.yml
+    echo "authtoken: $ngrok_token" >> /home/pi/.config/ngrok/ngrok.yml
+    cp $git_location/services/ngrok.service /etc/systemd/system/ngrok.service
+    systemctl daemon-reload
+    systemctl enable ngrok
+    systemctl restart ngrok
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
