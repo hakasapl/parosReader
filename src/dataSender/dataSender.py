@@ -4,6 +4,8 @@ import time
 from datetime import datetime
 import os
 import csv
+import argparse
+import pandas as pd
 
 def main():
 
@@ -12,13 +14,13 @@ def main():
     parser.add_argument("org", help="InfluxDB Org", type=str)
     parser.add_argument("token", help="InfluxDB API token", type=str)
     parser.add_argument("bucket", help="InfluxDB Bucket name", type=str)
-    parser.add_argument("-l", "--logdir", help="Log directory", nargs='+', required=True)
+    parser.add_argument("-l", "--logdir", help="Log directory", action='append', required=True)
     parser.add_argument("-t", "--time", help="Send specific csv")
+    parser.add_argument("-c", "--chunk", help="CSV chunk size in # of lines", default=1000)
     args = parser.parse_args()
 
     # create influxdb objects
     client = influxdb_client.InfluxDBClient(url=args.url, token=args.token, org=args.org)
-    write_api = client.write_api(write_options=SYNCHRONOUS)
 
     # find csv file to send
     if args.time is None:
@@ -39,31 +41,30 @@ def main():
             log_prefix + "_" + datetime.strftime(csv_timestamp, "%Y%m%d-%H") + ".txt"
         )
 
-        if os.path.exists(csv_path):
-            # found log file
-            with open(csv_path) as csv_file:
-                csvreader = csv.reader(csv_file)
+        # read csv in chunks with pandas
+        if log_prefix == "BAROLOG":
+            csvHeader = ["hostname", "sensor_id", "sys_timestamp", "timestamp", "value"]
+        elif log_prefix == "WINDLOG":
+            csvHeader = ["hostname", "sensor_id", "timestamp", "adc", "voltage", "value"]
+        
+        i = 0
+        for df in pd.read_csv(csv_path, chunksize=args.chunk, names=csvHeader):
+            # convert values
+            df["value"] = df["value"].astype(float)
 
-                for row in csvreader:
-                    # create influxdb point
-                    p_hostname = row[0]
-                    p_sensorid = row[1]
-                    p_timestamp = row[2]
-                    p_sensortimestamp = row[3]
-                    p_value = row[4]
-
-                    p = influxdb_client.Point(p_hostname) \
-                        .tag("dtype", logfiles_prefix[i]) \
-                        .tag("sensor_id", p_sensorid) \
-                        .time(p_sensortimestamp) \
-                        .field("sys_timestamp", p_timestamp) \
-                        .field("value", p_value)
-
-                    write_api.write(bucket=args.bucket, org=args.org, record=p)
-
-        else:
-            # didn't find log file
-            print("Log file " + csv_path + " doesn't exist!")
+            print("Sending " + log_prefix + " data points [" + str(i * args.chunk) + "-" + str((i + 1) * args.chunk - 1) + "]")
+            i += 1
+            with client.write_api() as write_api:
+                try:
+                    write_api.write(
+                        record=df,
+                        bucket=args.bucket,
+                        data_frame_measurement_name="paros1",
+                        data_frame_tag_columns=["sensor_id"],
+                        data_frame_timestamp_column="timestamp",
+                    )
+                except InfluxDBError as e:
+                    print(e)
 
 if __name__ == "__main__":
     main()
