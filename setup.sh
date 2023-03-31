@@ -171,19 +171,25 @@ echoGreen "Creating wind speed log directory...\n"
 mkdir -p $wind_log_loc
 chown pi:pi $wind_log_loc
 
-echoYellow "Should this box forward SSH to NGROK (y/n)? "
-read ngrok_enable
-if [ "$ngrok_enable" = "y" ]; then
-    echoYellow "[ngrok] Enter authentication token: "
-    read ngrok_token
+echoYellow "Connect to FRP Endpoint (y/n)? "
+read frp_enable
+if [ "$frp_enable" = "y" ]; then
+    echoYellow "[FRP] Enter FRP host (def: mgh4.casa.umass.edu): "
+    read frp_host
+    frp_host=${frp_host:-mgh4.casa.umass.edu}
 
-    mkdir -p /home/pi/.config/ngrok
-    echo 'version: "2"' > /home/pi/.config/ngrok/ngrok.yml
-    echo "authtoken: $ngrok_token" >> /home/pi/.config/ngrok/ngrok.yml
-    cp $git_location/services/ngrok.service /etc/systemd/system/ngrok.service
-    systemctl daemon-reload
-    systemctl enable ngrok
-    systemctl restart ngrok
+    echoYellow "[FRP] Enter FRP host (def: 7000): "
+    read frp_port
+    frp_port=${frp_port:-7000}
+
+    echo "[common]" > $git_location/run/frpc.ini
+    echo "server_addr = $frp_host" >> $git_location/run/frpc.ini
+    echo "server_port = $frp_port" >> $git_location/run/frpc.ini
+    echo "[ssh]" >> $git_location/run/frpc.ini
+    echo "type = tcp" >> $git_location/run/frpc.ini
+    echo "local_ip = 127.0.0.1" >> $git_location/run/frpc.ini
+    echo "local_port = 22" >> $git_location/run/frpc.ini
+    echo "remote_port = 6000" >> $git_location/run/frpc.ini
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
