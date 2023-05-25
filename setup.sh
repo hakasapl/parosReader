@@ -43,7 +43,7 @@ if [[ "$*" == *"--skip-apt"* ]]; then
 else
     echoGreen "Installing APT Prerequisites...\n"
     apt-get update
-    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
+    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
     if [ $? -ne 0 ]; then
         echoRed "Error installing apt packages\n"
         exit 1
@@ -55,28 +55,67 @@ if [[ "$*" == *"--skip-pip"* ]]; then
     echoGreen "Skipping installing Python packages\n"
 else
     echoGreen "Installing Python Packages...\n"
-    pip install pika Adafruit-ADS1x15 pySerial
+    pip install pySerial pandas
     if [ $? -ne 0 ]; then
         echoRed "Error installing PyPI packages\n"
         exit 1
     fi
 fi
 
-echoYellow "How many barometers are in this module (def: 2)? "
-read num_baro
-num_baro=${num_baro:-2}
+echoYellow "Does the box have a barometer (y/n)? "
+read baro
+if [ "$baro" = "y" ]; then
+    echoYellow "How many barometers are in this module (def: 2)? "
+    read num_baro
+    num_baro=${num_baro:-2}
 
-echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
-read baro_log_loc
-baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
+    echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
+    read baro_log_loc
+    baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
 
-echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
-read baro_wind_loc
-wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
+    baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
 
-# create cmd strings
-baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
-wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
+    echoGreen "Creating run files for barometer logging...\n"
+    echo "#!/bin/bash" > $git_location/run/baro.sh
+    echo "${baro_cmd}" >> $git_location/run/baro.sh
+    chmod +x $git_location/run/baro.sh
+
+    # deploy service files
+    echoGreen "Deploying systemd service files for barometer...\n"
+    cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
+    systemctl daemon-reload
+    systemctl enable baro-logger
+
+    # creating logging directories
+    echoGreen "Creating barometer log directory...\n"
+    mkdir -p $baro_log_loc
+    chown pi:pi $baro_log_loc
+fi
+
+echoYellow "Does the box have an anemometer (y/n)? "
+read anemometer
+if [ "$anemometer" = "y" ]; then
+    echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
+    read baro_wind_loc
+    wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
+
+    wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
+
+    echoGreen "Creating run files for wind speed logging...\n"
+    echo "#!/bin/bash" > $git_location/run/wind.sh
+    echo "${wind_cmd}" >> $git_location/run/wind.sh
+    chmod +x $git_location/run/wind.sh
+
+    # deploy service files
+    echoGreen "Deploying systemd service files for anemometer...\n"
+    cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
+    systemctl daemon-reload
+    systemctl enable wind-logger
+
+    echoGreen "Creating wind speed log directory...\n"
+    mkdir -p $wind_log_loc
+    chown pi:pi $wind_log_loc
+fi
 
 # check if influxdb posting is required
 echoYellow "Should data be uploaded to influxdb (y/n)? "
@@ -108,34 +147,6 @@ if [ "$influxdb" = "y" ]; then
     systemctl daemon-reload
     systemctl enable datasender.timer
 fi
-
-# create run files
-echoGreen "Creating run files for barometer logging...\n"
-echo "#!/bin/bash" > $git_location/run/baro.sh
-echo "${baro_cmd}" >> $git_location/run/baro.sh
-chmod +x $git_location/run/baro.sh
-
-echoGreen "Creating run files for wind speed logging...\n"
-echo "#!/bin/bash" > $git_location/run/wind.sh
-echo "${wind_cmd}" >> $git_location/run/wind.sh
-chmod +x $git_location/run/wind.sh
-
-# deploy service files
-echoGreen "Deploying systemd service files...\n"
-cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
-cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
-systemctl daemon-reload
-systemctl enable baro-logger
-systemctl enable wind-logger
-
-# creating logging directories
-echoGreen "Creating barometer log directory...\n"
-mkdir -p $baro_log_loc
-chown pi:pi $baro_log_loc
-
-echoGreen "Creating wind speed log directory...\n"
-mkdir -p $wind_log_loc
-chown pi:pi $wind_log_loc
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 echo "Setup script complete!"
