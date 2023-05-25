@@ -43,7 +43,7 @@ if [[ "$*" == *"--skip-apt"* ]]; then
 else
     echoGreen "Installing APT Prerequisites...\n"
     apt-get update
-    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev gpsd gpsd-tools ntp
+    apt-get install -y python3-pip python3-smbus i2c-tools usbmuxd libatlas-base-dev
     if [ $? -ne 0 ]; then
         echoRed "Error installing apt packages\n"
         exit 1
@@ -55,62 +55,67 @@ if [[ "$*" == *"--skip-pip"* ]]; then
     echoGreen "Skipping installing Python packages\n"
 else
     echoGreen "Installing Python Packages...\n"
-    pip install pika Adafruit-ADS1x15 pySerial
+    pip install pySerial pandas
     if [ $? -ne 0 ]; then
         echoRed "Error installing PyPI packages\n"
         exit 1
     fi
 fi
 
+echoYellow "Does the box have a barometer (y/n)? "
+read baro
+if [ "$baro" = "y" ]; then
+    echoYellow "How many barometers are in this module (def: 2)? "
+    read num_baro
+    num_baro=${num_baro:-2}
 
-# setup GPS NTP source
-echoYellow "Does this box have a GPS (y/n)? "
-read gps_enable
-if [ "$gps_enable" == "y" ]; then
-    echoGreen "Setting up GPS...\n"
-    grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
+    echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
+    read baro_log_loc
+    baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
 
-    systemctl enable gpsd.socket
-    systemctl start gpsd.socket
-    systemctl enable gpsd
-    systemctl start gpsd
+    baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
 
-    grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    echoGreen "Creating run files for barometer logging...\n"
+    echo "#!/bin/bash" > $git_location/run/baro.sh
+    echo "${baro_cmd}" >> $git_location/run/baro.sh
+    chmod +x $git_location/run/baro.sh
 
-    grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
+    # deploy service files
+    echoGreen "Deploying systemd service files for barometer...\n"
+    cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
+    systemctl daemon-reload
+    systemctl enable baro-logger
 
-    grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    systemctl restart ntp
+    # creating logging directories
+    echoGreen "Creating barometer log directory...\n"
+    mkdir -p $baro_log_loc
+    chown pi:pi $baro_log_loc
 fi
 
-echoYellow "How many barometers are in this module (def: 2)? "
-read num_baro
-num_baro=${num_baro:-2}
+echoYellow "Does the box have an anemometer (y/n)? "
+read anemometer
+if [ "$anemometer" = "y" ]; then
+    echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
+    read baro_wind_loc
+    wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
 
-echoYellow "Where should we output barometer logs (def: /opt/BAROLOG)? "
-read baro_log_loc
-baro_log_loc=${baro_log_loc:-/opt/BAROLOG}
+    wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
 
-echoYellow "Where should we output wind speed logs (def: /opt/WINDLOG)? "
-read baro_wind_loc
-wind_log_loc=${baro_wind_loc:-/opt/WINDLOG}
+    echoGreen "Creating run files for wind speed logging...\n"
+    echo "#!/bin/bash" > $git_location/run/wind.sh
+    echo "${wind_cmd}" >> $git_location/run/wind.sh
+    chmod +x $git_location/run/wind.sh
 
-# create cmd strings
-baro_cmd="python3 ${git_location}/src/baroLogger/baroLogger.py -d ${baro_log_loc} -n ${num_baro}"
-wind_cmd="python3 ${git_location}/src/windLogger/windLogger.py -d ${wind_log_loc}"
+    # deploy service files
+    echoGreen "Deploying systemd service files for anemometer...\n"
+    cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
+    systemctl daemon-reload
+    systemctl enable wind-logger
+
+    echoGreen "Creating wind speed log directory...\n"
+    mkdir -p $wind_log_loc
+    chown pi:pi $wind_log_loc
+fi
 
 # check if influxdb posting is required
 echoYellow "Should data be uploaded to influxdb (y/n)? "
@@ -141,49 +146,6 @@ if [ "$influxdb" = "y" ]; then
     cp $git_location/services/datasender* /etc/systemd/system/
     systemctl daemon-reload
     systemctl enable datasender.timer
-fi
-
-# create run files
-echoGreen "Creating run files for barometer logging...\n"
-echo "#!/bin/bash" > $git_location/run/baro.sh
-echo "${baro_cmd}" >> $git_location/run/baro.sh
-chmod +x $git_location/run/baro.sh
-
-echoGreen "Creating run files for wind speed logging...\n"
-echo "#!/bin/bash" > $git_location/run/wind.sh
-echo "${wind_cmd}" >> $git_location/run/wind.sh
-chmod +x $git_location/run/wind.sh
-
-# deploy service files
-echoGreen "Deploying systemd service files...\n"
-cp $git_location/services/baro-logger.service /etc/systemd/system/baro-logger.service
-cp $git_location/services/wind-logger.service /etc/systemd/system/wind-logger.service
-systemctl daemon-reload
-systemctl enable baro-logger
-systemctl enable wind-logger
-
-# creating logging directories
-echoGreen "Creating barometer log directory...\n"
-mkdir -p $baro_log_loc
-chown pi:pi $baro_log_loc
-
-echoGreen "Creating wind speed log directory...\n"
-mkdir -p $wind_log_loc
-chown pi:pi $wind_log_loc
-
-echoYellow "Should this box forward SSH to NGROK (y/n)? "
-read ngrok_enable
-if [ "$ngrok_enable" = "y" ]; then
-    echoYellow "[ngrok] Enter authentication token: "
-    read ngrok_token
-
-    mkdir -p /home/pi/.config/ngrok
-    echo 'version: "2"' > /home/pi/.config/ngrok/ngrok.yml
-    echo "authtoken: $ngrok_token" >> /home/pi/.config/ngrok/ngrok.yml
-    cp $git_location/services/ngrok.service /etc/systemd/system/ngrok.service
-    systemctl daemon-reload
-    systemctl enable ngrok
-    systemctl restart ngrok
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
