@@ -135,7 +135,15 @@ if [ "$influxdb" = "y" ]; then
     echoYellow "[INFLUXDB] What is the API token? "
     read influxdb_token
 
-    influxdb_cmd="${influxdb_hostname} ${influxdb_org} ${influxdb_token} ${influxdb_bucket} -l ${baro_log_loc} -l ${wind_log_loc}"
+    influxdb_cmd="${influxdb_hostname} ${influxdb_org} ${influxdb_token} ${influxdb_bucket}"
+    
+    if [ "$baro" = "y" ]; then
+        influxdb_cmd="$influxdb_cmd -l ${baro_log_loc}"
+    fi
+
+    if [ "$anemometer" = "y" ]; then
+        influxdb_cmd="$influxdb_cmd -l ${wind_log_loc}"
+    fi
 
     echoGreen "[INFLUXDB] Creating run files for influxdb dataSender...\n"
     echo "#!/bin/bash" > $git_location/run/datasender.sh
