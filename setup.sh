@@ -62,40 +62,6 @@ else
     fi
 fi
 
-
-# setup GPS NTP source
-echoYellow "Does this box have a GPS (y/n)? "
-read gps_enable
-if [ "$gps_enable" == "y" ]; then
-    echoGreen "Setting up GPS...\n"
-    grep -qxF 'GPS_BAUD=9600' /etc/default/gpsd || echo 'GPS_BAUD=9600' >> /etc/default/gpsd
-
-    systemctl enable gpsd.socket
-    systemctl start gpsd.socket
-    systemctl enable gpsd
-    systemctl start gpsd
-
-    grep -qxF 'server 127.127.20.0 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.0 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.0 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.1 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.1 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.1 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.2 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.2 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.2 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.3 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.3 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.3 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.4 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.4 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.4 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    grep -qxF 'server 127.127.20.5 mode 16 minpoll 4 prefer' /etc/ntp.conf || echo 'server 127.127.20.5 mode 16 minpoll 4 prefer' >> /etc/ntp.conf
-    grep -qxF 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' /etc/ntp.conf || echo 'fudge 127.127.20.5 flag3 1 flag2 0 time1 0.0' >> /etc/ntp.conf
-
-    systemctl restart ntp
-fi
-
 echoYellow "How many barometers are in this module (def: 2)? "
 read num_baro
 num_baro=${num_baro:-2}
@@ -170,27 +136,6 @@ chown pi:pi $baro_log_loc
 echoGreen "Creating wind speed log directory...\n"
 mkdir -p $wind_log_loc
 chown pi:pi $wind_log_loc
-
-echoYellow "Connect to FRP Endpoint (y/n)? "
-read frp_enable
-if [ "$frp_enable" = "y" ]; then
-    echoYellow "[FRP] Enter FRP host (def: mgh4.casa.umass.edu): "
-    read frp_host
-    frp_host=${frp_host:-mgh4.casa.umass.edu}
-
-    echoYellow "[FRP] Enter FRP host (def: 7000): "
-    read frp_port
-    frp_port=${frp_port:-7000}
-
-    echo "[common]" > $git_location/run/frpc.ini
-    echo "server_addr = $frp_host" >> $git_location/run/frpc.ini
-    echo "server_port = $frp_port" >> $git_location/run/frpc.ini
-    echo "[ssh]" >> $git_location/run/frpc.ini
-    echo "type = tcp" >> $git_location/run/frpc.ini
-    echo "local_ip = 127.0.0.1" >> $git_location/run/frpc.ini
-    echo "local_port = 22" >> $git_location/run/frpc.ini
-    echo "remote_port = 6000" >> $git_location/run/frpc.ini
-fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 echo "Setup script complete!"
