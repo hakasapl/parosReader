@@ -14,10 +14,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Source config
-git_location="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd && echo x)"
+git_location="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
 # Check if config.sh exists
-if [ ! -f $git_location/config.sh ]; then
+if [ ! -f "$git_location/config.sh" ]; then
     printf "config.sh not found! Please create a config.sh file in the root of the repository.\n"
     exit 1
 fi
@@ -97,8 +97,8 @@ if [ "$anem" = "y" ]; then
     systemctl enable wind-logger
 
     printf "[ANEMOMETER] Creating log directory...\n"
-    mkdir -p $wind_log_loc
-    chown $box_user:$box_user $wind_log_loc
+    mkdir -p $anem_log_loc
+    chown $box_user:$box_user $anem_log_loc
 fi
 
 # check if influxdb posting is required
@@ -129,13 +129,16 @@ fi
 
 if [ "$frp" = "y" ]; then
     # Install FRPC
-    printf "[FRP] Installing FRPC...\n"
-    wget $frp_download -O /tmp/frp.tar.gz
-    tar -xf /tmp/frp.tar.gz -C /tmp
-    cp /tmp/frp*/frpc /usr/local/bin/frpc
-    rm -rf /tmp/frp*
+    if [ ! -f "/usr/local/bin/frpc" ]; then
+        printf "[FRP] Installing FRPC...\n"
+        wget -nv $frp_download -O /tmp/frp.tar.gz
+        tar -xf /tmp/frp.tar.gz -C /tmp
+        cp /tmp/frp*/frpc /usr/local/bin/frpc
+        chmod +x /usr/local/bin/frpc
+        rm -rf /tmp/frp*
+    fi
 
-    frpc_cmd="frpc tcp --server-addr=${frp_hostname} --server-port=${frp_port} --token=${frp_token} --local-port=22 --local-ip=127.0.0.1 --remote-port=${frp_bind_port} --tls_enable"
+    frpc_cmd="frpc tcp --server_addr=${frp_hostname}:${frp_port} --token=${frp_token} --local_port=22 --local_ip=127.0.0.1 --remote_port=${frp_bind_port} --proxy_name=${box_name} --tls_enable"
 
     printf "[FRP] Creating run files...\n"
     echo "#!/bin/bash" > $git_location/run/frpc.sh
