@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Config file containing vars for a given deployment
+
+#
+# Global Vars
+#
+box_name="paros1"  # Name of current box
+box_user="pi"  # System to user to run these scripts as
+
+#
+# Sensor Vars
+#
+baro="y"  # Does a barometer exist in this box? (y/n)
+baro_num=2  # If baro="y", how many barometers in this box?
+baro_log_loc="/opt/BAROLOG"  # If baro="y", where should we output barometer logs?
+
+anem="y"  # Does an anemometer exist in this box? (y/n)
+anem_num=1  # If anem="y", how many anemometers in this box?
+anem_log_loc="/opt/WINDLOG"  # If anem="y", where should we output anemometer logs?
+
+#
+# Data Upload Vars
+#
+influxdb="y"  # Do we want to upload data to influxdb? (y/n)
+influxdb_hostname="https://influxdb.paros.casa.umass.edu/"  # If influxdb="y", what is the hostname?
+influxdb_org="paros"  # If influxdb="y", what is the organization?
+influxdb_bucket="paros-live-datastream"  # If influxdb="y", what is the bucket?
+influxdb_token=""  # If influxdb="y", what is the token?
+
+#
+# Remote Access Vars
+#
+frp="y"  # Create tunnel to an frps endpoint? (y/n)
+frp_hostname="mgh4.casa.umass.edu"  # If frp="y", what is the hostname?
+frp_port="7000"  # If frp="y", what is the port?
+frp_bind_port="10001"  # If frp="y", what is the bind port?
+frp_token=""  # If frp="y", what is the token?
+frp_download="https://github.com/fatedier/frp/releases/download/v0.49.0/frp_0.49.0_linux_arm64.tar.gz"  # If frp="y", what is the download link?
